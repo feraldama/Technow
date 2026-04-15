@@ -9,6 +9,11 @@ import {
 } from "../../services/productos.service";
 import ProductsList from "../../components/products/ProductsList";
 import Pagination from "../../components/common/Pagination";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
 
@@ -218,9 +223,18 @@ export default function ProductsPage() {
     setCurrentPage(1);
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver los productos</div>;
-  if (loading) return <div>Cargando productos...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los productos" />;
+  if (loading) return <LoadingState message="Cargando productos..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchProductos();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

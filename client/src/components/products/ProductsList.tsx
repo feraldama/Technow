@@ -666,7 +666,6 @@ export default function ProductsList({
                                 <td className="px-3 py-2">
                                   <input
                                     type="number"
-                                    min={0}
                                     value={row.ProductoAlmacenStock}
                                     onChange={(e) =>
                                       updateStockAlmacen(
@@ -676,6 +675,7 @@ export default function ProductsList({
                                       )
                                     }
                                     className="bg-gray-50 border border-gray-300 text-gray-900 rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                    title="Permitido negativo (ej. ventas registradas antes de cargar la compra)"
                                   />
                                 </td>
                                 <td className="px-3 py-2">
