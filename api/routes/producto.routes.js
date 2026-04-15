@@ -18,6 +18,11 @@ router.get(
   authMiddleware,
   productoController.getReporteStock
 );
+router.get(
+  "/reporte-movimientos",
+  authMiddleware,
+  productoController.getReporteMovimientos
+);
 router.get("/search", authMiddleware, productoController.searchProductos);
 router.get("/:id", authMiddleware, productoController.getProductoById);
 router.post("/", authMiddleware, productoController.createProducto);

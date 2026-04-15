@@ -7,6 +7,10 @@ import api from "../../services/api";
 import { formatMiles } from "../../utils/utils";
 import { getAllClientesSinPaginacion } from "../../services/clientes.service";
 import {
+  getReporteMovimientosProductos,
+  type ProductoMovimientoRow,
+} from "../../services/productos.service";
+import {
   getRegistrosDiariosCajaPorRango,
   type RegistroDiarioCajaRow,
 } from "../../services/registros.service";
@@ -266,6 +270,14 @@ const ReportesPage: React.FC = () => {
   const [paginaCierre, setPaginaCierre] = useState(1);
   const [fechaDesdeCierre, setFechaDesdeCierre] = useState(() => getHoyISO());
   const [fechaHastaCierre, setFechaHastaCierre] = useState(() => getHoyISO());
+
+  // Estado del reporte "Productos vendidos y comprados"
+  const [fechaDesdeMov, setFechaDesdeMov] = useState(() => {
+    const hoy = new Date();
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return primerDiaMes.toISOString().split("T")[0];
+  });
+  const [fechaHastaMov, setFechaHastaMov] = useState(() => getHoyISO());
 
   const totalPaginasCierre = Math.max(
     1,
@@ -677,6 +689,190 @@ const ReportesPage: React.FC = () => {
     }
   };
 
+  const handleGenerarReporteMovimientos = async () => {
+    if (!fechaDesdeMov || !fechaHastaMov) {
+      setError("Debes seleccionar ambas fechas");
+      return;
+    }
+    if (new Date(fechaDesdeMov) > new Date(fechaHastaMov)) {
+      setError("La fecha desde no puede ser mayor que la fecha hasta");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getReporteMovimientosProductos(
+        fechaDesdeMov,
+        fechaHastaMov,
+      );
+      const productos: ProductoMovimientoRow[] = data?.productos ?? [];
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      let y = 18;
+
+      // Título y período
+      doc.setFontSize(16);
+      doc.text("Reporte de productos vendidos y comprados", 14, y);
+      y += 7;
+      doc.setFontSize(10);
+      doc.text(
+        `Período: ${formatearFecha(fechaDesdeMov)} al ${formatearFecha(fechaHastaMov)}`,
+        14,
+        y,
+      );
+      y += 6;
+
+      if (productos.length === 0) {
+        doc.setFontSize(11);
+        doc.text("Sin movimientos en el período seleccionado.", 14, y + 6);
+      } else {
+        // Filas: una por producto
+        const rows = productos.map((p) => {
+          const ganancia = p.MontoVendido - p.CostoVendido;
+          const margen =
+            p.MontoVendido > 0 ? (ganancia / p.MontoVendido) * 100 : 0;
+          return [
+            String(p.ProductoCodigo ?? ""),
+            String(p.ProductoNombre ?? ""),
+            formatMiles(p.CantidadVendida),
+            formatMiles(p.CantidadComprada),
+            formatMiles(p.MontoVendido),
+            formatMiles(p.CostoVendido),
+            formatMiles(ganancia),
+            `${margen.toFixed(1)}%`,
+          ];
+        });
+
+        autoTable(doc, {
+          head: [
+            [
+              "Código",
+              "Producto",
+              "Cant. vend.",
+              "Cant. comp.",
+              "Monto venta",
+              "Costo venta",
+              "Ganancia",
+              "Margen",
+            ],
+          ],
+          body: rows,
+          startY: y + 2,
+          theme: "grid",
+          headStyles: { fillColor: [29, 78, 216], fontSize: 9 }, // brand-700
+          styles: { fontSize: 8 },
+          margin: { left: 14, right: 14 },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            1: { cellWidth: "auto" },
+            2: { cellWidth: 24, halign: "right" },
+            3: { cellWidth: 24, halign: "right" },
+            4: { cellWidth: 30, halign: "right" },
+            5: { cellWidth: 30, halign: "right" },
+            6: { cellWidth: 30, halign: "right" },
+            7: { cellWidth: 20, halign: "right" },
+          },
+        });
+
+        y =
+          (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable
+            .finalY + 10;
+
+        // Totales generales
+        const totales = productos.reduce(
+          (acc, p) => {
+            acc.cantidadVendida += p.CantidadVendida;
+            acc.cantidadComprada += p.CantidadComprada;
+            acc.montoVendido += p.MontoVendido;
+            acc.costoVendido += p.CostoVendido;
+            acc.montoComprado += p.MontoComprado;
+            return acc;
+          },
+          {
+            cantidadVendida: 0,
+            cantidadComprada: 0,
+            montoVendido: 0,
+            costoVendido: 0,
+            montoComprado: 0,
+          },
+        );
+        const gananciaTotal = totales.montoVendido - totales.costoVendido;
+        const margenPromedio =
+          totales.montoVendido > 0
+            ? (gananciaTotal / totales.montoVendido) * 100
+            : 0;
+
+        // Si no entra el resumen en la página actual, salto a una nueva
+        const pageHeight = doc.internal.pageSize.getHeight();
+        if (y > pageHeight - 60) {
+          doc.addPage();
+          y = 18;
+        }
+
+        doc.setFontSize(13);
+        doc.text("RESUMEN GENERAL", 14, y);
+        y += 7;
+        doc.setFontSize(10);
+        doc.text(
+          `Productos con movimiento : ${productos.length}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.text(
+          `Cantidad total vendida   : ${formatMiles(totales.cantidadVendida)}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.text(
+          `Cantidad total comprada  : ${formatMiles(totales.cantidadComprada)}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.text(
+          `Monto total ventas       : Gs. ${formatMiles(totales.montoVendido)}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.text(
+          `Costo total ventas       : Gs. ${formatMiles(totales.costoVendido)}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.text(
+          `Monto total compras      : Gs. ${formatMiles(totales.montoComprado)}`,
+          14,
+          y,
+        );
+        y += 6;
+        doc.setFontSize(11);
+        doc.text(
+          `Ganancia total           : Gs. ${formatMiles(gananciaTotal)}   |   Margen promedio: ${margenPromedio.toFixed(1)}%`,
+          14,
+          y,
+        );
+      }
+
+      const nombreArchivo = `reporte_movimientos_productos_${fechaDesdeMov}_${fechaHastaMov}.pdf`;
+      doc.save(nombreArchivo);
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      const e = err as { message?: string };
+      setError(
+        e?.message || "Error al generar el reporte de productos vendidos/comprados",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generarReporteCierre = async () => {
     if (!fechaDesdeCierre || !fechaHastaCierre) {
       setError("Seleccione fecha desde y hasta");
@@ -907,6 +1103,52 @@ const ReportesPage: React.FC = () => {
               GENERAR REPORTE
             </button>
           </div>
+        </div>
+
+        {/* Reporte de productos vendidos y comprados */}
+        <div className="w-full bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold mb-4">
+            Productos vendidos y comprados
+          </h2>
+          <p className="text-gray-600 mb-4 text-sm">
+            Para el rango seleccionado, lista todos los productos con
+            movimiento e informa cantidad vendida, cantidad comprada, monto
+            facturado, costo, ganancia y margen %. Al final, un resumen general
+            del período.
+          </p>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Desde
+              </label>
+              <input
+                type="date"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                value={fechaDesdeMov}
+                onChange={(e) => setFechaDesdeMov(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Hasta
+              </label>
+              <input
+                type="date"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                value={fechaHastaMov}
+                onChange={(e) => setFechaHastaMov(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+          <button
+            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
+            onClick={handleGenerarReporteMovimientos}
+            disabled={loading}
+          >
+            GENERAR REPORTE
+          </button>
         </div>
 
         {/* Reporte de cierre de caja por rango de fechas */}

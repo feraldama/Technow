@@ -110,3 +110,44 @@ export const searchProductos = async (
     throw axiosError.response?.data || { message: "Error al buscar productos" };
   }
 };
+
+export interface ProductoMovimientoRow {
+  ProductoId: number;
+  ProductoCodigo: string;
+  ProductoNombre: string;
+  CantidadVendida: number;
+  MontoVendido: number;
+  CostoVendido: number;
+  CantidadComprada: number;
+  MontoComprado: number;
+}
+
+export interface ReporteMovimientosResponse {
+  productos: ProductoMovimientoRow[];
+  fechaDesde: string;
+  fechaHasta: string;
+}
+
+/**
+ * Reporte de productos vendidos y comprados en un rango de fechas.
+ * Devuelve solo productos con movimiento. La ganancia y el margen se calculan
+ * en el frontend a partir de MontoVendido - CostoVendido.
+ */
+export const getReporteMovimientosProductos = async (
+  fechaDesde: string,
+  fechaHasta: string
+): Promise<ReporteMovimientosResponse> => {
+  try {
+    const response = await api.get("/productos/reporte-movimientos", {
+      params: { fechaDesde, fechaHasta },
+    });
+    return response.data?.data as ReporteMovimientosResponse;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw (
+      axiosError.response?.data || {
+        message: "Error al generar el reporte de movimientos",
+      }
+    );
+  }
+};

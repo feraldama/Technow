@@ -383,6 +383,79 @@ const Producto = {
     });
   },
 
+  /**
+   * Reporte de movimientos (ventas y compras) por producto en un rango de
+   * fechas. Devuelve solo productos con movimiento en el período.
+   *
+   * Métricas por producto:
+   *  - CantidadVendida   = SUM(ventaproducto.VentaProductoCantidad)
+   *  - MontoVendido      = SUM(ventaproducto.VentaProductoPrecioTotal)
+   *  - CostoVendido      = SUM(VentaProductoCantidad * VentaProductoPrecioPromedio)
+   *                        (precio promedio = costo unitario al momento de la venta)
+   *  - CantidadComprada  = SUM(compraproducto.CompraProductoCantidad)
+   *  - MontoComprado     = SUM(CompraProductoCantidad * CompraProductoPrecio)
+   *
+   * Ganancia y margen se calculan en el frontend (Ganancia = Monto - Costo).
+   */
+  getReporteMovimientosPorRango: (fechaDesde, fechaHasta) => {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT
+          p.ProductoId,
+          p.ProductoCodigo,
+          p.ProductoNombre,
+          COALESCE(v.CantidadVendida, 0)  AS CantidadVendida,
+          COALESCE(v.MontoVendido,    0)  AS MontoVendido,
+          COALESCE(v.CostoVendido,    0)  AS CostoVendido,
+          COALESCE(c.CantidadComprada, 0) AS CantidadComprada,
+          COALESCE(c.MontoComprado,    0) AS MontoComprado
+        FROM producto p
+        LEFT JOIN (
+          SELECT
+            vp.ProductoId,
+            SUM(vp.VentaProductoCantidad)                                 AS CantidadVendida,
+            SUM(vp.VentaProductoPrecioTotal)                              AS MontoVendido,
+            SUM(vp.VentaProductoCantidad * vp.VentaProductoPrecioPromedio) AS CostoVendido
+          FROM ventaproducto vp
+          INNER JOIN venta vv ON vv.VentaId = vp.VentaId
+          WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
+          GROUP BY vp.ProductoId
+        ) v ON v.ProductoId = p.ProductoId
+        LEFT JOIN (
+          SELECT
+            cp.ProductoId,
+            SUM(cp.CompraProductoCantidad)                              AS CantidadComprada,
+            SUM(cp.CompraProductoCantidad * cp.CompraProductoPrecio)    AS MontoComprado
+          FROM compraproducto cp
+          INNER JOIN compra cc ON cc.CompraId = cp.CompraId
+          WHERE DATE(cc.CompraFecha) BETWEEN ? AND ?
+          GROUP BY cp.ProductoId
+        ) c ON c.ProductoId = p.ProductoId
+        WHERE COALESCE(v.CantidadVendida, 0) <> 0
+           OR COALESCE(c.CantidadComprada, 0) <> 0
+        ORDER BY p.ProductoNombre ASC
+      `;
+      db.query(
+        query,
+        [fechaDesde, fechaHasta, fechaDesde, fechaHasta],
+        (err, rows) => {
+          if (err) return reject(err);
+          const productos = rows.map((r) => ({
+            ProductoId: r.ProductoId,
+            ProductoCodigo: r.ProductoCodigo,
+            ProductoNombre: r.ProductoNombre,
+            CantidadVendida: Number(r.CantidadVendida) || 0,
+            MontoVendido: Number(r.MontoVendido) || 0,
+            CostoVendido: Number(r.CostoVendido) || 0,
+            CantidadComprada: Number(r.CantidadComprada) || 0,
+            MontoComprado: Number(r.MontoComprado) || 0,
+          }));
+          resolve({ productos });
+        }
+      );
+    });
+  },
+
   getReporteStock: () => {
     return new Promise((resolve, reject) => {
       const query = `
