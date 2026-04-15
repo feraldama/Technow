@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCajas } from "../../services/cajas.service";
 import ActionButton from "../../components/common/Button/ActionButton";
+import { LoadingState } from "../../components/common/ui";
 import {
   aperturaCierreCaja,
   getEstadoAperturaPorUsuario,
@@ -377,7 +378,7 @@ export default function AperturaCierreCajaPage() {
     }
   };
 
-  if (loading) return <div>Cargando cajas...</div>;
+  if (loading) return <LoadingState message="Cargando cajas..." />;
 
   return (
     <div className="container mx-auto px-4 max-w-xl">

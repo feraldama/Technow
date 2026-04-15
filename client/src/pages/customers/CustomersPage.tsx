@@ -10,6 +10,11 @@ import CustomersList from "../../components/customers/CustomersList";
 import Pagination from "../../components/common/Pagination";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 
 interface Cliente {
   id: string | number;
@@ -191,9 +196,18 @@ export default function CustomersPage() {
     setCurrentPage(1);
   };
 
-  if (loading) return <div>Cargando clientes...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!puedeLeer) return <div>No tienes permiso para ver los clientes</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los clientes" />;
+  if (loading) return <LoadingState message="Cargando clientes..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchClientes();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

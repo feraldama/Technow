@@ -11,6 +11,11 @@ import Pagination from "../../components/common/Pagination";
 import Swal from "sweetalert2";
 import { getProductosAll } from "../../services/productos.service";
 import { usePermiso } from "../../hooks/usePermiso";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 
 interface Combo {
   id: string | number;
@@ -166,9 +171,18 @@ export default function CombosPage() {
     }
   };
 
-  if (loading) return <div>Cargando combos...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!puedeLeer) return <div>No tienes permiso para ver los combos</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los combos" />;
+  if (loading) return <LoadingState message="Cargando combos..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchCombos();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

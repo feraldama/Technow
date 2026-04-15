@@ -10,6 +10,11 @@ import AlmacenesList from "../../components/almacenes/AlmacenesList";
 import Pagination from "../../components/common/Pagination";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 
 interface Almacen {
   id: string | number;
@@ -183,9 +188,18 @@ export default function AlmacenesPage() {
     setCurrentPage(1);
   };
 
-  if (loading) return <div>Cargando almacenes...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!puedeLeer) return <div>No tienes permiso para ver los almacenes</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los almacenes" />;
+  if (loading) return <LoadingState message="Cargando almacenes..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchAlmacenes();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

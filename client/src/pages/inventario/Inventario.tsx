@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import ActionButton from "../../components/common/Button/ActionButton";
 import { getLocalById } from "../../services/locales.service";
 import { usePermiso } from "../../hooks/usePermiso";
+import { PermissionDenied } from "../../components/common/ui";
 
 interface AlmacenStockRow {
   AlmacenId: number;
@@ -330,7 +331,7 @@ export default function Inventario() {
     }
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver el inventario.</div>;
+  if (!puedeLeer) return <PermissionDenied resource="el inventario" />;
 
   return (
     <div className="flex h-screen bg-[#f5f8ff]">

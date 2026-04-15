@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { usePermiso } from "../../hooks/usePermiso";
+import { PermissionDenied } from "../../components/common/ui";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import api from "../../services/api";
@@ -319,7 +320,7 @@ const ReportesPage: React.FC = () => {
     cargarClientes();
   }, []);
 
-  if (!puedeLeer) return <div>No tienes permiso para ver los reportes</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los reportes" />;
 
   // Función para formatear fecha de aaaa-mm-dd a dd-mm-aaaa
   const formatearFecha = (fecha: string): string => {

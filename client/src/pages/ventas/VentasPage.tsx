@@ -13,6 +13,11 @@ import { getProductoById } from "../../services/productos.service";
 import { getAlmacenById } from "../../services/almacenes.service";
 import VentasList from "../../components/ventas/VentasList";
 import Pagination from "../../components/common/Pagination";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 import { formatCurrency } from "../../utils/utils";
 import Swal from "sweetalert2";
 import axios from "axios";
@@ -375,9 +380,18 @@ export default function VentasPage() {
     console.log("Crear nueva venta");
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver las ventas.</div>;
-  if (loading) return <div>Cargando ventas...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (!puedeLeer) return <PermissionDenied resource="las ventas" />;
+  if (loading) return <LoadingState message="Cargando ventas..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchVentas();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

@@ -8,6 +8,11 @@ import {
 } from "../../services/usuarios.service";
 import UsersList from "../../components/users/UsersList";
 import Pagination from "../../components/common/Pagination";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
 import {
@@ -259,10 +264,19 @@ export default function UsuariosPage() {
     setCurrentPage(1); // Resetear a la primera página cuando cambia el número de items por página
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver los usuarios</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los usuarios" />;
 
-  if (loading) return <div>Cargando usuarios...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <LoadingState message="Cargando usuarios..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchUsuarios();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

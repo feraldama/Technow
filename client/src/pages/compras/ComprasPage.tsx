@@ -13,6 +13,11 @@ import { getProductoById } from "../../services/productos.service";
 import { getAlmacenById } from "../../services/almacenes.service";
 import ComprasList from "../../components/compras/ComprasList";
 import Pagination from "../../components/common/Pagination";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 import { formatCurrency } from "../../utils/utils";
 import Swal from "sweetalert2";
 import axios from "axios";
@@ -389,9 +394,18 @@ export default function ComprasPage() {
     console.log("Crear nueva compra");
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver las compras.</div>;
-  if (loading) return <div>Cargando compras...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (!puedeLeer) return <PermissionDenied resource="las compras" />;
+  if (loading) return <LoadingState message="Cargando compras..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchCompras();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">

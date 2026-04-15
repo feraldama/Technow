@@ -10,6 +10,11 @@ import LocalesList from "../../components/locales/LocalesList";
 import Pagination from "../../components/common/Pagination";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
+import {
+  LoadingState,
+  ErrorState,
+  PermissionDenied,
+} from "../../components/common/ui";
 
 interface Local {
   id: string | number;
@@ -181,9 +186,18 @@ export default function LocalesPage() {
     setCurrentPage(1);
   };
 
-  if (!puedeLeer) return <div>No tienes permiso para ver los locales.</div>;
-  if (loading) return <div>Cargando locales...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (!puedeLeer) return <PermissionDenied resource="los locales" />;
+  if (loading) return <LoadingState message="Cargando locales..." />;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          fetchLocales();
+        }}
+      />
+    );
 
   return (
     <div className="container mx-auto px-4">
