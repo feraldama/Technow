@@ -3,6 +3,19 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const PerfilMenu = require("../models/perfilmenu.model");
 
+function extractUsuarioFilters(query) {
+  const allowedEstados = ["A", "I"];
+  const allowedAdmin = ["S", "N"];
+  const filters = {};
+  if (query.estado && allowedEstados.includes(query.estado))
+    filters.estado = query.estado;
+  if (query.admin && allowedAdmin.includes(query.admin))
+    filters.admin = query.admin;
+  if (query.localId !== undefined && query.localId !== "")
+    filters.localId = query.localId;
+  return filters;
+}
+
 // getAllUsuarios
 exports.getAllUsuarios = async (req, res) => {
   try {
@@ -11,12 +24,14 @@ exports.getAllUsuarios = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "UsuarioId";
     const sortOrder = req.query.sortOrder || "ASC";
+    const filters = extractUsuarioFilters(req.query);
 
     const { usuarios, total } = await Usuario.getAllPaginated(
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({
@@ -48,12 +63,15 @@ exports.searchUsuarios = async (req, res) => {
         .json({ error: "El término de búsqueda no puede estar vacío" });
     }
 
+    const filters = extractUsuarioFilters(req.query);
+
     const { usuarios, total } = await Usuario.search(
       searchTerm,
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({

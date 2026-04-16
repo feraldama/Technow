@@ -1,6 +1,23 @@
 const Producto = require("../models/producto.model");
 
-// getAllProductos (localId opcional: si viene, el stock devuelto es solo de almacenes con ese LocalId)
+function extractProductoFilters(query) {
+  const filters = {};
+  if (query.localId !== undefined && query.localId !== "") {
+    const local = parseInt(query.localId, 10);
+    if (!isNaN(local)) filters.localId = local;
+  }
+  if (query.stockMin !== undefined && query.stockMin !== "")
+    filters.stockMin = query.stockMin;
+  if (query.stockMax !== undefined && query.stockMax !== "")
+    filters.stockMax = query.stockMax;
+  if (query.precioMin !== undefined && query.precioMin !== "")
+    filters.precioMin = query.precioMin;
+  if (query.precioMax !== undefined && query.precioMax !== "")
+    filters.precioMax = query.precioMax;
+  return filters;
+}
+
+// getAllProductos (filters: localId, stockMin/Max, precioMin/Max)
 exports.getAllProductos = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -8,16 +25,13 @@ exports.getAllProductos = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "ProductoId";
     const sortOrder = req.query.sortOrder || "ASC";
-    const localId =
-      req.query.localId !== undefined && req.query.localId !== ""
-        ? parseInt(req.query.localId, 10)
-        : null;
+    const filters = extractProductoFilters(req.query);
     const { productos, total } = await Producto.getAllPaginated(
       limit,
       offset,
       sortBy,
       sortOrder,
-      isNaN(localId) ? null : localId
+      filters
     );
     convertirImagenes(productos);
     res.json({
@@ -34,7 +48,7 @@ exports.getAllProductos = async (req, res) => {
   }
 };
 
-// searchProductos (localId opcional: si viene, el stock devuelto es solo de almacenes con ese LocalId)
+// searchProductos (filters: localId, stockMin/Max, precioMin/Max)
 exports.searchProductos = async (req, res) => {
   try {
     const { q: searchTerm } = req.query;
@@ -43,10 +57,7 @@ exports.searchProductos = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "ProductoId";
     const sortOrder = req.query.sortOrder || "ASC";
-    const localId =
-      req.query.localId !== undefined && req.query.localId !== ""
-        ? parseInt(req.query.localId, 10)
-        : null;
+    const filters = extractProductoFilters(req.query);
     if (!searchTerm || searchTerm.trim() === "") {
       return res
         .status(400)
@@ -58,7 +69,7 @@ exports.searchProductos = async (req, res) => {
       offset,
       sortBy,
       sortOrder,
-      isNaN(localId) ? null : localId
+      filters
     );
     convertirImagenes(productos);
     res.json({

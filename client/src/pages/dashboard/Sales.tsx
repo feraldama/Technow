@@ -242,27 +242,18 @@ export default function Sales() {
 
     setLoading(true);
     try {
-      const localIdUsuario = user?.LocalId ?? null;
+      // No filtramos por localId en el backend: necesitamos incluir productos
+      // "universales" (LocalId=0) además de los del local del usuario, y eso
+      // lo resuelve el filtro client-side de abajo.
       let data;
       if (busquedaDebounced.trim()) {
-        // Si hay búsqueda, usar el endpoint de búsqueda paginado (stock del almacén del local del usuario)
         data = await searchProductos(
           busquedaDebounced.trim(),
           currentPage,
           itemsPerPage,
-          undefined,
-          undefined,
-          localIdUsuario,
         );
       } else {
-        // Si no hay búsqueda, cargar productos paginados (stock del almacén del local del usuario)
-        data = await getProductosPaginated(
-          currentPage,
-          itemsPerPage,
-          undefined,
-          undefined,
-          localIdUsuario,
-        );
+        data = await getProductosPaginated(currentPage, itemsPerPage);
       }
 
       // Filtrar productos por LocalId: mostrar si es 0 (todos) o si coincide con el local del usuario
@@ -823,15 +814,9 @@ export default function Sales() {
     setBusquedaDebounced(busqueda);
 
     try {
-      // Buscar productos usando el servicio de búsqueda (stock del almacén del local del usuario)
-      const data = await searchProductos(
-        busqueda.trim(),
-        1,
-        10,
-        undefined,
-        undefined,
-        user?.LocalId ?? null,
-      );
+      // Buscar sin filtro de localId; el filtro por LocalId=0 || LocalId=usuario
+      // se aplica client-side abajo para incluir productos universales.
+      const data = await searchProductos(busqueda.trim(), 1, 10);
       const localUsuario = Number(user?.LocalId);
       const productosFiltrados = (data.data || []).filter(
         (p: { LocalId: string | number }) => {

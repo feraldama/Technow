@@ -5,6 +5,7 @@ import {
   searchClientes,
   createCliente,
   updateCliente,
+  type ClienteFilters,
 } from "../../services/clientes.service";
 import CustomersList from "../../components/customers/CustomersList";
 import Pagination from "../../components/common/Pagination";
@@ -50,6 +51,8 @@ export default function CustomersPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortKey, setSortKey] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [filters, setFilters] = useState<ClienteFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const puedeCrear = usePermiso("CLIENTES", "crear");
   const puedeEditar = usePermiso("CLIENTES", "editar");
@@ -66,10 +69,17 @@ export default function CustomersPage() {
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       } else {
-        data = await getClientes(currentPage, itemsPerPage, sortKey, sortOrder);
+        data = await getClientes(
+          currentPage,
+          itemsPerPage,
+          sortKey,
+          sortOrder,
+          filters
+        );
       }
       setClientesData({
         clientes: data.data,
@@ -84,7 +94,19 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearchTerm, itemsPerPage, sortKey, sortOrder]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    itemsPerPage,
+    sortKey,
+    sortOrder,
+    filters,
+  ]);
+
+  const handleFiltersChange = (newFilters: ClienteFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     fetchClientes();
@@ -241,6 +263,10 @@ export default function CustomersPage() {
           setSortOrder(order);
           setCurrentPage(1);
         }}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
       />
       <Pagination
         currentPage={currentPage}

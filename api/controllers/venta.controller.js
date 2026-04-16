@@ -9,6 +9,19 @@ exports.getAll = async (req, res) => {
   }
 };
 
+function extractVentaFilters(query) {
+  const allowedTipos = ["CO", "CR", "PO", "TR"];
+  const allowedEstados = ["P", "C"];
+  const filters = {};
+  if (query.tipo && allowedTipos.includes(query.tipo)) filters.tipo = query.tipo;
+  if (query.almacenId) filters.almacenId = query.almacenId;
+  if (query.fechaDesde) filters.fechaDesde = query.fechaDesde;
+  if (query.fechaHasta) filters.fechaHasta = query.fechaHasta;
+  if (query.estado && allowedEstados.includes(query.estado))
+    filters.estado = query.estado;
+  return filters;
+}
+
 exports.getAllPaginated = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -16,12 +29,14 @@ exports.getAllPaginated = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "VentaId";
     const sortOrder = req.query.sortOrder || "ASC";
+    const filters = extractVentaFilters(req.query);
 
     const result = await Venta.getAllPaginated(
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({
@@ -114,12 +129,15 @@ exports.searchVentas = async (req, res) => {
       });
     }
 
+    const filters = extractVentaFilters(req.query);
+
     const result = await Venta.searchVentas(
       searchTerm,
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({

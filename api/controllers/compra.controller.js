@@ -1,6 +1,17 @@
 const Compra = require("../models/compra.model");
 const CompraProducto = require("../models/compraproducto.model");
 
+function extractCompraFilters(query) {
+  const allowedTipos = ["CO", "CR"];
+  const filters = {};
+  if (query.tipo && allowedTipos.includes(query.tipo)) filters.tipo = query.tipo;
+  if (query.proveedorId) filters.proveedorId = query.proveedorId;
+  if (query.almacenId) filters.almacenId = query.almacenId;
+  if (query.fechaDesde) filters.fechaDesde = query.fechaDesde;
+  if (query.fechaHasta) filters.fechaHasta = query.fechaHasta;
+  return filters;
+}
+
 // getAllCompras
 exports.getAllCompras = async (req, res) => {
   try {
@@ -9,12 +20,14 @@ exports.getAllCompras = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "CompraId";
     const sortOrder = req.query.sortOrder || "DESC";
+    const filters = extractCompraFilters(req.query);
 
     const { compras, total } = await Compra.getAllPaginated(
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({
@@ -47,12 +60,15 @@ exports.searchCompras = async (req, res) => {
         .json({ error: "El término de búsqueda no puede estar vacío" });
     }
 
+    const filters = extractCompraFilters(req.query);
+
     const { compras, total } = await Compra.search(
       searchTerm,
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({

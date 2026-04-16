@@ -1,5 +1,12 @@
 const Cliente = require("../models/cliente.model");
 
+function extractClienteFilters(query) {
+  const allowedTipos = ["MI", "MA"];
+  const filters = {};
+  if (query.tipo && allowedTipos.includes(query.tipo)) filters.tipo = query.tipo;
+  return filters;
+}
+
 // getAllClientes
 exports.getAllClientes = async (req, res) => {
   try {
@@ -8,12 +15,14 @@ exports.getAllClientes = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || "ClienteId";
     const sortOrder = req.query.sortOrder || "ASC";
+    const filters = extractClienteFilters(req.query);
 
     const { clientes, total } = await Cliente.getAllPaginated(
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({
@@ -45,12 +54,15 @@ exports.searchClientes = async (req, res) => {
         .json({ error: "El término de búsqueda no puede estar vacío" });
     }
 
+    const filters = extractClienteFilters(req.query);
+
     const { clientes, total } = await Cliente.search(
       searchTerm,
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json({

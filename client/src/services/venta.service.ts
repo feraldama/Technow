@@ -48,6 +48,26 @@ export interface VentaProducto {
   VentaProductoUnitario: number;
 }
 
+export interface VentaFilters {
+  tipo?: "CO" | "CR" | "PO" | "TR";
+  almacenId?: number | string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  estado?: "P" | "C";
+}
+
+const applyVentaFilters = (
+  params: { [key: string]: string | number | undefined },
+  filters?: VentaFilters
+) => {
+  if (!filters) return;
+  if (filters.tipo) params.tipo = filters.tipo;
+  if (filters.almacenId) params.almacenId = filters.almacenId;
+  if (filters.fechaDesde) params.fechaDesde = filters.fechaDesde;
+  if (filters.fechaHasta) params.fechaHasta = filters.fechaHasta;
+  if (filters.estado) params.estado = filters.estado;
+};
+
 export const getVentas = async () => {
   const response = await api.get("/venta");
   return response.data;
@@ -57,7 +77,8 @@ export const getVentasPaginated = async (
   page = 1,
   limit = 10,
   sortBy?: string,
-  sortOrder?: "asc" | "desc"
+  sortOrder?: "asc" | "desc",
+  filters?: VentaFilters
 ) => {
   const params: { [key: string]: string | number | undefined } = {
     page,
@@ -65,6 +86,7 @@ export const getVentasPaginated = async (
   };
   if (sortBy) params.sortBy = sortBy;
   if (sortOrder) params.sortOrder = sortOrder;
+  applyVentaFilters(params, filters);
   try {
     const response = await api.get("/venta/paginated", { params });
     return response.data;
@@ -126,7 +148,8 @@ export const searchVentas = async (
   page = 1,
   limit = 10,
   sortBy?: string,
-  sortOrder?: "asc" | "desc"
+  sortOrder?: "asc" | "desc",
+  filters?: VentaFilters
 ) => {
   const params: { [key: string]: string | number | undefined } = {
     q: searchTerm,
@@ -135,6 +158,7 @@ export const searchVentas = async (
   };
   if (sortBy) params.sortBy = sortBy;
   if (sortOrder) params.sortOrder = sortOrder;
+  applyVentaFilters(params, filters);
   try {
     const response = await api.get("/venta/search", { params });
     return response.data;

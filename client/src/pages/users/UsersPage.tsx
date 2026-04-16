@@ -5,7 +5,9 @@ import {
   searchUsuarios,
   createUsuario,
   updateUsuario,
+  type UsuarioFilters,
 } from "../../services/usuarios.service";
+import { getLocales } from "../../services/locales.service";
 import UsersList from "../../components/users/UsersList";
 import Pagination from "../../components/common/Pagination";
 import {
@@ -58,6 +60,11 @@ export default function UsuariosPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortKey, setSortKey] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [filters, setFilters] = useState<UsuarioFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [locales, setLocales] = useState<
+    { LocalId: number; LocalNombre: string }[]
+  >([]);
 
   const puedeCrear = usePermiso("USUARIOS", "crear");
   const puedeEditar = usePermiso("USUARIOS", "editar");
@@ -74,10 +81,17 @@ export default function UsuariosPage() {
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       } else {
-        data = await getUsuarios(currentPage, itemsPerPage, sortKey, sortOrder);
+        data = await getUsuarios(
+          currentPage,
+          itemsPerPage,
+          sortKey,
+          sortOrder,
+          filters
+        );
       }
       setUsuariosData({
         usuarios: data.data,
@@ -92,11 +106,30 @@ export default function UsuariosPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearchTerm, itemsPerPage, sortKey, sortOrder]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    itemsPerPage,
+    sortKey,
+    sortOrder,
+    filters,
+  ]);
 
   useEffect(() => {
     fetchUsuarios();
   }, [fetchUsuarios]);
+
+  useEffect(() => {
+    // Cargar locales para el dropdown del filtro.
+    getLocales(1, 1000)
+      .then((res) => setLocales(res.data || []))
+      .catch((err) => console.error("Error al cargar locales:", err));
+  }, []);
+
+  const handleFiltersChange = (newFilters: UsuarioFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -337,6 +370,11 @@ export default function UsuariosPage() {
           setSortOrder(order);
           setCurrentPage(1);
         }}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        filterLocales={locales}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
       />
       <Pagination
         currentPage={currentPage}

@@ -4,13 +4,14 @@ import {
   getVentasPaginated,
   searchVentas,
   type Venta,
+  type VentaFilters,
   getProductosByVentaId,
   type VentaProducto,
   deleteVenta,
 } from "../../services/venta.service";
 import { getClienteById } from "../../services/clientes.service";
 import { getProductoById } from "../../services/productos.service";
-import { getAlmacenById } from "../../services/almacenes.service";
+import { getAlmacenById, getAlmacenes } from "../../services/almacenes.service";
 import VentasList from "../../components/ventas/VentasList";
 import Pagination from "../../components/common/Pagination";
 import {
@@ -42,6 +43,11 @@ export default function VentasPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortKey, setSortKey] = useState<string>("VentaId");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [filters, setFilters] = useState<VentaFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [almacenes, setAlmacenes] = useState<
+    { AlmacenId: number; AlmacenNombre: string }[]
+  >([]);
 
   const puedeCrear = usePermiso("VENTAS", "crear");
   const puedeLeer = usePermiso("VENTAS", "leer");
@@ -81,14 +87,16 @@ export default function VentasPage() {
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       } else {
         data = await getVentasPaginated(
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       }
       const ventasConClientes = await loadClientesData(data.data);
@@ -106,11 +114,38 @@ export default function VentasPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearchTerm, itemsPerPage, sortKey, sortOrder]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    itemsPerPage,
+    sortKey,
+    sortOrder,
+    filters,
+  ]);
 
   useEffect(() => {
     fetchVentas();
   }, [fetchVentas]);
+
+  useEffect(() => {
+    // Cargar almacenes una sola vez para el dropdown de filtros.
+    // El endpoint está paginado; usamos un limit alto porque la cantidad
+    // esperada de almacenes es chica (decenas como máximo).
+    const loadAlmacenes = async () => {
+      try {
+        const data = await getAlmacenes(1, 1000);
+        setAlmacenes(data?.data || []);
+      } catch (err) {
+        console.error("Error al cargar almacenes para filtros:", err);
+      }
+    };
+    loadAlmacenes();
+  }, []);
+
+  const handleFiltersChange = (newFilters: VentaFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -413,6 +448,11 @@ export default function VentasPage() {
           setSortOrder(order);
           setCurrentPage(1);
         }}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        almacenes={almacenes}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
       />
       <Pagination
         currentPage={currentPage}

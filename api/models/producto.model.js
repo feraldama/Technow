@@ -1,5 +1,39 @@
 const db = require("../config/db");
 
+/**
+ * Construye la cláusula WHERE para filtros de productos.
+ * - localId (Local FK)
+ * - stockMin / stockMax: rango sobre ProductoStock
+ * - precioMin / precioMax: rango sobre ProductoPrecioVenta
+ */
+function buildProductoFiltersWhere(filters = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (filters.localId != null && filters.localId !== "") {
+    conditions.push("p.LocalId = ?");
+    params.push(Number(filters.localId));
+  }
+  if (filters.stockMin != null && filters.stockMin !== "") {
+    conditions.push("COALESCE(p.ProductoStock, 0) >= ?");
+    params.push(Number(filters.stockMin));
+  }
+  if (filters.stockMax != null && filters.stockMax !== "") {
+    conditions.push("COALESCE(p.ProductoStock, 0) <= ?");
+    params.push(Number(filters.stockMax));
+  }
+  if (filters.precioMin != null && filters.precioMin !== "") {
+    conditions.push("COALESCE(p.ProductoPrecioVenta, 0) >= ?");
+    params.push(Number(filters.precioMin));
+  }
+  if (filters.precioMax != null && filters.precioMax !== "") {
+    conditions.push("COALESCE(p.ProductoPrecioVenta, 0) <= ?");
+    params.push(Number(filters.precioMax));
+  }
+
+  return { conditions, params };
+}
+
 const Producto = {
   getAll: () => {
     return new Promise((resolve, reject) => {
@@ -41,7 +75,7 @@ const Producto = {
     offset,
     sortBy = "ProductoId",
     sortOrder = "ASC",
-    localId = null
+    filters = {}
   ) => {
     return new Promise((resolve, reject) => {
       const allowedSortFields = [
@@ -75,30 +109,42 @@ const Producto = {
           ? sortField
           : `p.${sortField}`;
 
-      // Ahora el stock total viene directamente de la tabla producto
+      const { conditions, params: filterParams } =
+        buildProductoFiltersWhere(filters);
+      const whereSql = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
       const queryPaginated = `
         SELECT p.*, l.LocalNombre
         FROM producto p
         LEFT JOIN local l ON p.LocalId = l.LocalId
+        ${whereSql}
         ORDER BY ${orderByField} ${order}
         LIMIT ? OFFSET ?
       `;
 
-      db.query(queryPaginated, [limit, offset], (err, results) => {
-        if (err) return reject(err);
+      db.query(
+        queryPaginated,
+        [...filterParams, limit, offset],
+        (err, results) => {
+          if (err) return reject(err);
 
-        db.query(
-          "SELECT COUNT(*) as total FROM producto",
-          (err, countResult) => {
+          const countQuery = `
+            SELECT COUNT(*) as total FROM producto p
+            LEFT JOIN local l ON p.LocalId = l.LocalId
+            ${whereSql}`;
+
+          db.query(countQuery, filterParams, (err, countResult) => {
             if (err) return reject(err);
 
             resolve({
               productos: results,
               total: countResult[0].total,
             });
-          }
-        );
-      });
+          });
+        }
+      );
     });
   },
 
@@ -108,7 +154,7 @@ const Producto = {
     offset,
     sortBy = "ProductoId",
     sortOrder = "ASC",
-    localId = null
+    filters = {}
   ) => {
     return new Promise((resolve, reject) => {
       const allowedSortFields = [
@@ -142,50 +188,53 @@ const Producto = {
           ? sortField
           : `p.${sortField}`;
 
-      // En búsqueda también usamos el stock directo de producto
+      const { conditions: filterConditions, params: filterParams } =
+        buildProductoFiltersWhere(filters);
+      const filtersAndClause = filterConditions.length
+        ? ` AND ${filterConditions.join(" AND ")}`
+        : "";
+
       const searchQuery = `
         SELECT p.*, l.LocalNombre
         FROM producto p
         LEFT JOIN local l ON p.LocalId = l.LocalId
-        WHERE p.ProductoNombre LIKE ? 
-        OR p.ProductoCodigo LIKE ? 
-        OR l.LocalNombre LIKE ?
+        WHERE (p.ProductoNombre LIKE ?
+          OR p.ProductoCodigo LIKE ?
+          OR l.LocalNombre LIKE ?)${filtersAndClause}
         ORDER BY ${orderByField} ${order}
         LIMIT ? OFFSET ?
       `;
       const searchValue = `%${term}%`;
-      const searchParams = [
-        searchValue,
-        searchValue,
-        searchValue,
-        limit,
-        offset,
-      ];
+      const searchParams = [searchValue, searchValue, searchValue];
 
-      db.query(searchQuery, searchParams, (err, results) => {
-        if (err) return reject(err);
+      db.query(
+        searchQuery,
+        [...searchParams, ...filterParams, limit, offset],
+        (err, results) => {
+          if (err) return reject(err);
 
-        const countQuery = `
+          const countQuery = `
             SELECT COUNT(*) as total FROM producto p
             LEFT JOIN local l ON p.LocalId = l.LocalId
-            WHERE p.ProductoNombre LIKE ? 
-            OR p.ProductoCodigo LIKE ? 
-            OR l.LocalNombre LIKE ?
+            WHERE (p.ProductoNombre LIKE ?
+              OR p.ProductoCodigo LIKE ?
+              OR l.LocalNombre LIKE ?)${filtersAndClause}
           `;
 
-        db.query(
-          countQuery,
-          [searchValue, searchValue, searchValue],
-          (err, countResult) => {
-            if (err) return reject(err);
+          db.query(
+            countQuery,
+            [...searchParams, ...filterParams],
+            (err, countResult) => {
+              if (err) return reject(err);
 
-            resolve({
-              productos: results,
-              total: countResult[0]?.total || 0,
-            });
-          }
-        );
-      });
+              resolve({
+                productos: results,
+                total: countResult[0]?.total || 0,
+              });
+            }
+          );
+        }
+      );
     });
   },
 

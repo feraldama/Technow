@@ -1,6 +1,21 @@
 const RegistroDiarioCaja = require("../models/registrodiariocaja.model");
 const db = require("../config/db");
 
+function extractRegistroFilters(query) {
+  const filters = {};
+  if (query.cajaId !== undefined && query.cajaId !== "")
+    filters.cajaId = query.cajaId;
+  if (query.tipoGastoId !== undefined && query.tipoGastoId !== "")
+    filters.tipoGastoId = query.tipoGastoId;
+  if (query.fechaDesde) filters.fechaDesde = query.fechaDesde;
+  if (query.fechaHasta) filters.fechaHasta = query.fechaHasta;
+  if (query.montoMin !== undefined && query.montoMin !== "")
+    filters.montoMin = query.montoMin;
+  if (query.montoMax !== undefined && query.montoMax !== "")
+    filters.montoMax = query.montoMax;
+  return filters;
+}
+
 // Obtener todos los registros con paginación
 exports.getAll = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
@@ -8,16 +23,14 @@ exports.getAll = async (req, res) => {
   const offset = (page - 1) * limit;
   const sortBy = req.query.sortBy || "RegistroDiarioCajaFecha";
   const sortOrder = req.query.sortOrder || "DESC";
+  const filters = extractRegistroFilters(req.query);
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
-
     const result = await RegistroDiarioCaja.getAllPaginated(
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
     res.json(result);
   } catch (error) {
@@ -42,12 +55,15 @@ exports.search = async (req, res) => {
         .json({ error: "El término de búsqueda no puede estar vacío" });
     }
 
+    const filters = extractRegistroFilters(req.query);
+
     const result = await RegistroDiarioCaja.search(
       searchTerm,
       limit,
       offset,
       sortBy,
-      sortOrder
+      sortOrder,
+      filters
     );
 
     res.json(result);

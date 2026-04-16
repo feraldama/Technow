@@ -6,6 +6,7 @@ import {
   searchProductos,
   createProducto,
   updateProducto,
+  type ProductoFilters,
 } from "../../services/productos.service";
 import ProductsList from "../../components/products/ProductsList";
 import Pagination from "../../components/common/Pagination";
@@ -70,6 +71,8 @@ export default function ProductsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortKey, setSortKey] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [filters, setFilters] = useState<ProductoFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const puedeCrear = usePermiso("PRODUCTOS", "crear");
   const puedeEditar = usePermiso("PRODUCTOS", "editar");
@@ -86,14 +89,16 @@ export default function ProductsPage() {
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       } else {
         data = await getProductosPaginated(
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       }
       setProductosData({
@@ -109,7 +114,19 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearchTerm, itemsPerPage, sortKey, sortOrder]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    itemsPerPage,
+    sortKey,
+    sortOrder,
+    filters,
+  ]);
+
+  const handleFiltersChange = (newFilters: ProductoFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     fetchProductos();
@@ -276,6 +293,10 @@ export default function ProductsPage() {
           setSortOrder(order);
           setCurrentPage(1);
         }}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
       />
       <Pagination
         currentPage={currentPage}

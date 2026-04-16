@@ -4,13 +4,17 @@ import {
   getComprasPaginated,
   searchCompras,
   type Compra,
+  type CompraFilters,
   getProductosByCompraId,
   type CompraProducto,
   deleteCompra,
 } from "../../services/compras.service";
-import { getProveedorById } from "../../services/proveedores.service";
+import {
+  getProveedorById,
+  getAllProveedoresSinPaginacion,
+} from "../../services/proveedores.service";
 import { getProductoById } from "../../services/productos.service";
-import { getAlmacenById } from "../../services/almacenes.service";
+import { getAlmacenById, getAlmacenes } from "../../services/almacenes.service";
 import ComprasList from "../../components/compras/ComprasList";
 import Pagination from "../../components/common/Pagination";
 import {
@@ -42,6 +46,14 @@ export default function ComprasPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortKey, setSortKey] = useState<string>("CompraId");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [filters, setFilters] = useState<CompraFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [almacenes, setAlmacenes] = useState<
+    { AlmacenId: number; AlmacenNombre: string }[]
+  >([]);
+  const [proveedores, setProveedores] = useState<
+    { ProveedorId: number; ProveedorNombre: string }[]
+  >([]);
 
   const puedeCrear = usePermiso("COMPRAS", "crear");
   const puedeLeer = usePermiso("COMPRAS", "leer");
@@ -107,14 +119,16 @@ export default function ComprasPage() {
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       } else {
         data = await getComprasPaginated(
           currentPage,
           itemsPerPage,
           sortKey,
-          sortOrder
+          sortOrder,
+          filters
         );
       }
       const comprasConProveedores = await loadProveedoresData(data.data);
@@ -132,11 +146,40 @@ export default function ComprasPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearchTerm, itemsPerPage, sortKey, sortOrder]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    itemsPerPage,
+    sortKey,
+    sortOrder,
+    filters,
+  ]);
 
   useEffect(() => {
     fetchCompras();
   }, [fetchCompras]);
+
+  useEffect(() => {
+    // Cargar almacenes y proveedores para los dropdowns de filtros.
+    const loadFilterOptions = async () => {
+      try {
+        const [almacenesRes, proveedoresRes] = await Promise.all([
+          getAlmacenes(1, 1000),
+          getAllProveedoresSinPaginacion(),
+        ]);
+        setAlmacenes(almacenesRes?.data || []);
+        setProveedores(proveedoresRes?.data || []);
+      } catch (err) {
+        console.error("Error al cargar opciones de filtros:", err);
+      }
+    };
+    loadFilterOptions();
+  }, []);
+
+  const handleFiltersChange = (newFilters: CompraFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -427,6 +470,12 @@ export default function ComprasPage() {
           setSortOrder(order);
           setCurrentPage(1);
         }}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        almacenes={almacenes}
+        proveedores={proveedores}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
       />
       <Pagination
         currentPage={currentPage}
