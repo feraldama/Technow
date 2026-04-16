@@ -4,6 +4,7 @@ import ActionButton from "../common/Button/ActionButton";
 import DataTable from "../common/Table/DataTable";
 import { PlusIcon, FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RegistroFilters } from "../../services/registros.service";
+import { formatMiles } from "../../utils/utils";
 
 interface Movimiento {
   id: string | number;
@@ -415,7 +416,8 @@ export default function MovementsList({
       )}
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {movimientos.length} de {pagination?.totalItems} registros
+          Mostrando {formatMiles(movimientos.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} registros
         </div>
       </div>
 

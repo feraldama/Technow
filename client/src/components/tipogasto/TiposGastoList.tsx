@@ -15,6 +15,7 @@ import {
   type TipoGastoGrupo,
 } from "../../services/tipogastogrupo.service";
 import Swal from "sweetalert2";
+import { formatMiles } from "../../utils/utils";
 
 interface TipoGasto {
   id: string | number;
@@ -156,8 +157,8 @@ export default function TiposGastoList({
       </div>
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {tiposGasto.length} de {pagination?.totalItems} tipos de
-          gasto
+          Mostrando {formatMiles(tiposGasto.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} tipos de gasto
         </div>
       </div>
       <DataTable<TipoGasto>

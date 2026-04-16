@@ -5,6 +5,7 @@ import { PlusIcon, FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import ClienteFormModal from "../common/ClienteFormModal";
 import type { Cliente } from "../common/ClienteFormModal";
 import type { ClienteFilters } from "../../services/clientes.service";
+import { formatMiles } from "../../utils/utils";
 
 interface Pagination {
   totalItems: number;
@@ -165,7 +166,8 @@ export default function CustomersList({
       )}
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {clientes.length} de {pagination?.totalItems} clientes
+          Mostrando {formatMiles(clientes.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} clientes
         </div>
       </div>
       <DataTable<Cliente & { id: string | number }>

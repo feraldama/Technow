@@ -13,6 +13,7 @@ import { getLocales } from "../../services/locales.service";
 import { getPerfiles } from "../../services/perfiles.service";
 import { getPerfilesByUsuario } from "../../services/usuarioperfil.service";
 import type { UsuarioFilters } from "../../services/usuarios.service";
+import { formatMiles } from "../../utils/utils";
 
 interface Usuario {
   id: string | number;
@@ -370,7 +371,8 @@ export default function UsuariosList({
 
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {usuarios.length} de {pagination?.totalItems} usuarios
+          Mostrando {formatMiles(usuarios.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} usuarios
         </div>
       </div>
 

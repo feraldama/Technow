@@ -134,7 +134,8 @@ export default function CajasList({
       </div>
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {cajas.length} de {pagination?.totalItems} cajas
+          Mostrando {formatMiles(cajas.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} cajas
         </div>
       </div>
       <DataTable<Caja>

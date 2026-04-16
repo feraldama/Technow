@@ -602,7 +602,8 @@ export default function ProductsList({
 
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {productos.length} de {pagination?.totalItems} productos
+          Mostrando {formatMiles(productos.length)} de{" "}
+          {formatMiles(pagination?.totalItems || 0)} productos
         </div>
       </div>
 

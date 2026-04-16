@@ -5,7 +5,7 @@ import type {
   VentaCreditoPago,
   VentaFilters,
 } from "../../services/venta.service";
-import { formatCurrency } from "../../utils/utils";
+import { formatCurrency, formatMiles } from "../../utils/utils";
 import { getAlmacenById } from "../../services/almacenes.service";
 import SearchButton from "../common/Input/SearchButton";
 import ActionButton from "../common/Button/ActionButton";
@@ -519,8 +519,9 @@ const VentasList = ({
       )}
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Mostrando {ventasWithAlmacen.length} de{" "}
-          {pagination?.totalItems || ventasWithAlmacen.length} ventas
+          Mostrando {formatMiles(ventasWithAlmacen.length)} de{" "}
+          {formatMiles(pagination?.totalItems || ventasWithAlmacen.length)}{" "}
+          ventas
         </div>
       </div>
 
