@@ -115,10 +115,16 @@ export interface ProductoMovimientoRow {
   ProductoId: number;
   ProductoCodigo: string;
   ProductoNombre: string;
-  CantidadVendida: number;
+  /** Cajas vendidas en el período (suma de VentaProductoCantidad). */
+  CantidadVendidaCajas: number;
+  /** Unidades sueltas vendidas en el período (suma de VentaProductoUnitario). */
+  CantidadVendidaUnidades: number;
   MontoVendido: number;
   CostoVendido: number;
-  CantidadComprada: number;
+  /** Cajas compradas (filas de compraproducto con CompraProductoCantidadUnidad='C'). */
+  CantidadCompradaCajas: number;
+  /** Unidades compradas (filas con CompraProductoCantidadUnidad='U'). */
+  CantidadCompradaUnidades: number;
   MontoComprado: number;
 }
 

@@ -726,6 +726,11 @@ const ReportesPage: React.FC = () => {
         doc.setFontSize(11);
         doc.text("Sin movimientos en el período seleccionado.", 14, y + 6);
       } else {
+        // Formatea "5 cj / 12 un". Si una parte es 0, igual se muestra para
+        // mantener alineación visual entre filas.
+        const fmtCjUn = (cajas: number, unidades: number) =>
+          `${formatMiles(cajas)} cj / ${formatMiles(unidades)} un`;
+
         // Filas: una por producto
         const rows = productos.map((p) => {
           const ganancia = p.MontoVendido - p.CostoVendido;
@@ -734,8 +739,8 @@ const ReportesPage: React.FC = () => {
           return [
             String(p.ProductoCodigo ?? ""),
             String(p.ProductoNombre ?? ""),
-            formatMiles(p.CantidadVendida),
-            formatMiles(p.CantidadComprada),
+            fmtCjUn(p.CantidadVendidaCajas, p.CantidadVendidaUnidades),
+            fmtCjUn(p.CantidadCompradaCajas, p.CantidadCompradaUnidades),
             formatMiles(p.MontoVendido),
             formatMiles(p.CostoVendido),
             formatMiles(ganancia),
@@ -748,8 +753,8 @@ const ReportesPage: React.FC = () => {
             [
               "Código",
               "Producto",
-              "Cant. vend.",
-              "Cant. comp.",
+              "Cant. vend. (cj/un)",
+              "Cant. comp. (cj/un)",
               "Monto venta",
               "Costo venta",
               "Ganancia",
@@ -763,14 +768,14 @@ const ReportesPage: React.FC = () => {
           styles: { fontSize: 8 },
           margin: { left: 14, right: 14 },
           columnStyles: {
-            0: { cellWidth: 24 },
+            0: { cellWidth: 22 },
             1: { cellWidth: "auto" },
-            2: { cellWidth: 24, halign: "right" },
-            3: { cellWidth: 24, halign: "right" },
-            4: { cellWidth: 30, halign: "right" },
-            5: { cellWidth: 30, halign: "right" },
-            6: { cellWidth: 30, halign: "right" },
-            7: { cellWidth: 20, halign: "right" },
+            2: { cellWidth: 32, halign: "right" },
+            3: { cellWidth: 32, halign: "right" },
+            4: { cellWidth: 28, halign: "right" },
+            5: { cellWidth: 28, halign: "right" },
+            6: { cellWidth: 28, halign: "right" },
+            7: { cellWidth: 18, halign: "right" },
           },
         });
 
@@ -781,16 +786,20 @@ const ReportesPage: React.FC = () => {
         // Totales generales
         const totales = productos.reduce(
           (acc, p) => {
-            acc.cantidadVendida += p.CantidadVendida;
-            acc.cantidadComprada += p.CantidadComprada;
+            acc.cantidadVendidaCajas += p.CantidadVendidaCajas;
+            acc.cantidadVendidaUnidades += p.CantidadVendidaUnidades;
+            acc.cantidadCompradaCajas += p.CantidadCompradaCajas;
+            acc.cantidadCompradaUnidades += p.CantidadCompradaUnidades;
             acc.montoVendido += p.MontoVendido;
             acc.costoVendido += p.CostoVendido;
             acc.montoComprado += p.MontoComprado;
             return acc;
           },
           {
-            cantidadVendida: 0,
-            cantidadComprada: 0,
+            cantidadVendidaCajas: 0,
+            cantidadVendidaUnidades: 0,
+            cantidadCompradaCajas: 0,
+            cantidadCompradaUnidades: 0,
             montoVendido: 0,
             costoVendido: 0,
             montoComprado: 0,
@@ -814,19 +823,19 @@ const ReportesPage: React.FC = () => {
         y += 7;
         doc.setFontSize(10);
         doc.text(
-          `Productos con movimiento : ${productos.length}`,
+          `Productos con movimiento     : ${productos.length}`,
           14,
           y,
         );
         y += 6;
         doc.text(
-          `Cantidad total vendida   : ${formatMiles(totales.cantidadVendida)}`,
+          `Cantidad vendida (cj / un)   : ${formatMiles(totales.cantidadVendidaCajas)} cj / ${formatMiles(totales.cantidadVendidaUnidades)} un`,
           14,
           y,
         );
         y += 6;
         doc.text(
-          `Cantidad total comprada  : ${formatMiles(totales.cantidadComprada)}`,
+          `Cantidad comprada (cj / un)  : ${formatMiles(totales.cantidadCompradaCajas)} cj / ${formatMiles(totales.cantidadCompradaUnidades)} un`,
           14,
           y,
         );

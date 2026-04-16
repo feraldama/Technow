@@ -387,13 +387,17 @@ const Producto = {
    * Reporte de movimientos (ventas y compras) por producto en un rango de
    * fechas. Devuelve solo productos con movimiento en el período.
    *
-   * Métricas por producto:
-   *  - CantidadVendida   = SUM(ventaproducto.VentaProductoCantidad)
-   *  - MontoVendido      = SUM(ventaproducto.VentaProductoPrecioTotal)
-   *  - CostoVendido      = SUM(VentaProductoCantidad * VentaProductoPrecioPromedio)
-   *                        (precio promedio = costo unitario al momento de la venta)
-   *  - CantidadComprada  = SUM(compraproducto.CompraProductoCantidad)
-   *  - MontoComprado     = SUM(CompraProductoCantidad * CompraProductoPrecio)
+   * Convención del schema (confirmada empíricamente con datos reales):
+   *  - ventaproducto.VentaProductoCantidad  = cantidad vendida (escalar)
+   *  - ventaproducto.VentaProductoUnitario  = flag 'C' (cajas) o 'U' (unidades)
+   *  - ventaproducto.VentaProductoPrecioPromedio = costo EN LA UNIDAD DEL
+   *    RENGLÓN. Si la venta fue por caja (C), es el costo por caja; si fue por
+   *    unidad (U), es el costo por unidad (el servicio que inserta ventaproducto
+   *    ya hace la división por ProductoCantidadCaja antes de guardarlo).
+   *  - compraproducto.CompraProductoCantidadUnidad = 'C' o 'U'
+   *
+   * Implicancia: el costo línea = cantidad × precioPromedio, sin importar la
+   * unidad — no hay que dividir otra vez por cantidadCaja (lo haríamos doble).
    *
    * Ganancia y margen se calculan en el frontend (Ganancia = Monto - Costo).
    */
@@ -404,18 +408,29 @@ const Producto = {
           p.ProductoId,
           p.ProductoCodigo,
           p.ProductoNombre,
-          COALESCE(v.CantidadVendida, 0)  AS CantidadVendida,
-          COALESCE(v.MontoVendido,    0)  AS MontoVendido,
-          COALESCE(v.CostoVendido,    0)  AS CostoVendido,
-          COALESCE(c.CantidadComprada, 0) AS CantidadComprada,
-          COALESCE(c.MontoComprado,    0) AS MontoComprado
+          COALESCE(v.CantidadVendidaCajas,     0) AS CantidadVendidaCajas,
+          COALESCE(v.CantidadVendidaUnidades,  0) AS CantidadVendidaUnidades,
+          COALESCE(v.MontoVendido,             0) AS MontoVendido,
+          COALESCE(v.CostoVendido,             0) AS CostoVendido,
+          COALESCE(c.CantidadCompradaCajas,    0) AS CantidadCompradaCajas,
+          COALESCE(c.CantidadCompradaUnidades, 0) AS CantidadCompradaUnidades,
+          COALESCE(c.MontoComprado,            0) AS MontoComprado
         FROM producto p
         LEFT JOIN (
           SELECT
             vp.ProductoId,
-            SUM(vp.VentaProductoCantidad)                                 AS CantidadVendida,
-            SUM(vp.VentaProductoPrecioTotal)                              AS MontoVendido,
-            SUM(vp.VentaProductoCantidad * vp.VentaProductoPrecioPromedio) AS CostoVendido
+            /* 'C' o desconocido → caja; 'U' → unidad */
+            SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
+                     THEN 0 ELSE vp.VentaProductoCantidad END)
+              AS CantidadVendidaCajas,
+            SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
+                     THEN vp.VentaProductoCantidad ELSE 0 END)
+              AS CantidadVendidaUnidades,
+            SUM(vp.VentaProductoPrecioTotal) AS MontoVendido,
+            /* precioPromedio ya está en la unidad del renglón, no dividir */
+            SUM(COALESCE(vp.VentaProductoCantidad, 0)
+                * COALESCE(vp.VentaProductoPrecioPromedio, 0))
+              AS CostoVendido
           FROM ventaproducto vp
           INNER JOIN venta vv ON vv.VentaId = vp.VentaId
           WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
@@ -424,15 +439,22 @@ const Producto = {
         LEFT JOIN (
           SELECT
             cp.ProductoId,
-            SUM(cp.CompraProductoCantidad)                              AS CantidadComprada,
-            SUM(cp.CompraProductoCantidad * cp.CompraProductoPrecio)    AS MontoComprado
+            SUM(CASE WHEN cp.CompraProductoCantidadUnidad = 'U'
+                     THEN 0 ELSE cp.CompraProductoCantidad END)
+              AS CantidadCompradaCajas,
+            SUM(CASE WHEN cp.CompraProductoCantidadUnidad = 'U'
+                     THEN cp.CompraProductoCantidad ELSE 0 END)
+              AS CantidadCompradaUnidades,
+            SUM(cp.CompraProductoCantidad * cp.CompraProductoPrecio) AS MontoComprado
           FROM compraproducto cp
           INNER JOIN compra cc ON cc.CompraId = cp.CompraId
           WHERE DATE(cc.CompraFecha) BETWEEN ? AND ?
           GROUP BY cp.ProductoId
         ) c ON c.ProductoId = p.ProductoId
-        WHERE COALESCE(v.CantidadVendida, 0) <> 0
-           OR COALESCE(c.CantidadComprada, 0) <> 0
+        WHERE COALESCE(v.CantidadVendidaCajas,     0) <> 0
+           OR COALESCE(v.CantidadVendidaUnidades,  0) <> 0
+           OR COALESCE(c.CantidadCompradaCajas,    0) <> 0
+           OR COALESCE(c.CantidadCompradaUnidades, 0) <> 0
         ORDER BY p.ProductoNombre ASC
       `;
       db.query(
@@ -444,10 +466,12 @@ const Producto = {
             ProductoId: r.ProductoId,
             ProductoCodigo: r.ProductoCodigo,
             ProductoNombre: r.ProductoNombre,
-            CantidadVendida: Number(r.CantidadVendida) || 0,
+            CantidadVendidaCajas: Number(r.CantidadVendidaCajas) || 0,
+            CantidadVendidaUnidades: Number(r.CantidadVendidaUnidades) || 0,
             MontoVendido: Number(r.MontoVendido) || 0,
             CostoVendido: Number(r.CostoVendido) || 0,
-            CantidadComprada: Number(r.CantidadComprada) || 0,
+            CantidadCompradaCajas: Number(r.CantidadCompradaCajas) || 0,
+            CantidadCompradaUnidades: Number(r.CantidadCompradaUnidades) || 0,
             MontoComprado: Number(r.MontoComprado) || 0,
           }));
           resolve({ productos });
