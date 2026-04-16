@@ -3,6 +3,7 @@ import SearchButton from "../common/Input/SearchButton";
 import ActionButton from "../common/Button/ActionButton";
 import DataTable from "../common/Table/DataTable";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import { formatMiles } from "../../utils/utils";
 
 interface Combo {
   id: string | number;
@@ -114,7 +115,11 @@ export default function CombosList({
     { key: "ComboDescripcion", label: "Descripción" },
     { key: "ProductoId", label: "Producto" },
     { key: "ComboCantidad", label: "Cantidad" },
-    { key: "ComboPrecio", label: "Precio" },
+    {
+      key: "ComboPrecio",
+      label: "Precio",
+      render: (item: Combo) => formatMiles(item.ComboPrecio),
+    },
   ];
 
   return (
@@ -261,15 +266,19 @@ export default function CombosList({
                       Precio
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       name="ComboPrecio"
                       id="ComboPrecio"
-                      value={formData.ComboPrecio}
-                      onChange={handleInputChange}
+                      value={formatMiles(formData.ComboPrecio)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\./g, "");
+                        setFormData((prev) => ({
+                          ...prev,
+                          ComboPrecio: Number(raw),
+                        }));
+                      }}
                       className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                       required
-                      min={0}
-                      step={0.01}
                     />
                   </div>
                 </div>
