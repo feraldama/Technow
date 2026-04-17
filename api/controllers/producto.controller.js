@@ -224,6 +224,36 @@ exports.getReporteMovimientos = async (req, res) => {
   }
 };
 
+// Reporte de productos más vendidos en un rango de fechas
+exports.getReporteMasVendidos = async (req, res) => {
+  try {
+    const { fechaDesde, fechaHasta } = req.query;
+    if (!fechaDesde || !fechaHasta) {
+      return res.status(400).json({
+        message: "Debe enviar fechaDesde y fechaHasta en el query string",
+      });
+    }
+    const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!isoRegex.test(fechaDesde) || !isoRegex.test(fechaHasta)) {
+      return res.status(400).json({
+        message: "Las fechas deben tener formato YYYY-MM-DD",
+      });
+    }
+    if (fechaDesde > fechaHasta) {
+      return res.status(400).json({
+        message: "fechaDesde no puede ser mayor que fechaHasta",
+      });
+    }
+    const { productos } = await Producto.getReporteMasVendidos(
+      fechaDesde,
+      fechaHasta
+    );
+    res.json({ data: { productos, fechaDesde, fechaHasta } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Reporte de stock total y por almacén de todos los productos
 exports.getReporteStock = async (req, res) => {
   try {

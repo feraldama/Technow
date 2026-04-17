@@ -529,23 +529,124 @@ const Producto = {
     });
   },
 
-  getReporteStock: () => {
+  /**
+   * Reporte de productos más vendidos en un rango de fechas.
+   *
+   * Normaliza la cantidad vendida a unidades totales:
+   *   - Renglón con VentaProductoUnitario = 'U' → cantidad tal cual (unidades)
+   *   - Renglón con VentaProductoUnitario = 'C' → cantidad * ProductoCantidadCaja
+   *
+   * Devuelve además precio de venta, precio unitario, costo promedio, stock
+   * actual (cajas + unidades), monto y costo vendidos del período. El frontend
+   * se encarga de:
+   *   - Convertir CantidadVendidaTotalUnidades a "cajas + unidades" según
+   *     ProductoCantidadCaja (ej. 15 unid con cantCaja=12 → 1 caja y 3 unid).
+   *   - Calcular ganancia = MontoVendido - CostoVendido.
+   *
+   * Ordena DESC por total de unidades vendidas.
+   */
+  getReporteMasVendidos: (fechaDesde, fechaHasta) => {
     return new Promise((resolve, reject) => {
+      // La agregación va en subquery por ProductoId y recién después se
+      // cruza con producto. Si se hacía GROUP BY sobre producto directo,
+      // la columna BLOB ProductoImagen colgaba el query en MySQL.
       const query = `
-        SELECT 
+        SELECT
           p.ProductoId,
           p.ProductoCodigo,
           p.ProductoNombre,
-          COALESCE(p.ProductoStock, 0) AS ProductoStock,
-          COALESCE(p.ProductoStockUnitario, 0) AS ProductoStockUnitario,
+          COALESCE(p.ProductoCantidadCaja, 0)   AS ProductoCantidadCaja,
+          COALESCE(p.ProductoPrecioVenta, 0)    AS ProductoPrecioVenta,
+          COALESCE(p.ProductoPrecioUnitario, 0) AS ProductoPrecioUnitario,
+          COALESCE(p.ProductoPrecioPromedio, 0) AS ProductoPrecioPromedio,
+          COALESCE(p.ProductoStock, 0)          AS ProductoStock,
+          COALESCE(p.ProductoStockUnitario, 0)  AS ProductoStockUnitario,
+          v.CantidadVendidaCajas,
+          v.CantidadVendidaUnidades,
+          v.MontoVendido,
+          v.CostoVendido
+        FROM (
+          SELECT
+            vp.ProductoId,
+            SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
+                     THEN 0 ELSE vp.VentaProductoCantidad END)
+              AS CantidadVendidaCajas,
+            SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
+                     THEN vp.VentaProductoCantidad ELSE 0 END)
+              AS CantidadVendidaUnidades,
+            SUM(COALESCE(vp.VentaProductoPrecioTotal, 0)) AS MontoVendido,
+            SUM(COALESCE(vp.VentaProductoCantidad, 0)
+                * COALESCE(vp.VentaProductoPrecioPromedio, 0)) AS CostoVendido
+          FROM ventaproducto vp
+          INNER JOIN venta vv ON vv.VentaId = vp.VentaId
+          WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
+          GROUP BY vp.ProductoId
+        ) v
+        INNER JOIN producto p ON p.ProductoId = v.ProductoId
+        WHERE v.CantidadVendidaCajas <> 0 OR v.CantidadVendidaUnidades <> 0
+      `;
+      db.query(query, [fechaDesde, fechaHasta], (err, rows) => {
+        if (err) return reject(err);
+        const productos = rows
+          .map((r) => {
+            const cajas = Number(r.CantidadVendidaCajas) || 0;
+            const unidades = Number(r.CantidadVendidaUnidades) || 0;
+            const cantidadCaja = Number(r.ProductoCantidadCaja) || 0;
+            // Normalizar a unidades totales. Si el producto no tiene
+            // cantidadCaja definida, asumimos 1 (las cajas equivalen a 1 unidad).
+            const multiplicadorCaja = cantidadCaja > 0 ? cantidadCaja : 1;
+            const totalUnidades = cajas * multiplicadorCaja + unidades;
+            return {
+              ProductoId: r.ProductoId,
+              ProductoCodigo: r.ProductoCodigo,
+              ProductoNombre: r.ProductoNombre,
+              ProductoCantidadCaja: cantidadCaja,
+              ProductoPrecioVenta: Number(r.ProductoPrecioVenta) || 0,
+              ProductoPrecioUnitario: Number(r.ProductoPrecioUnitario) || 0,
+              ProductoPrecioPromedio: Number(r.ProductoPrecioPromedio) || 0,
+              ProductoStock: Number(r.ProductoStock) || 0,
+              ProductoStockUnitario: Number(r.ProductoStockUnitario) || 0,
+              CantidadVendidaTotalUnidades: totalUnidades,
+              MontoVendido: Number(r.MontoVendido) || 0,
+              CostoVendido: Number(r.CostoVendido) || 0,
+            };
+          })
+          .filter((p) => p.CantidadVendidaTotalUnidades > 0)
+          .sort((a, b) => {
+            if (b.CantidadVendidaTotalUnidades !== a.CantidadVendidaTotalUnidades)
+              return b.CantidadVendidaTotalUnidades - a.CantidadVendidaTotalUnidades;
+            return String(a.ProductoNombre || "").localeCompare(
+              String(b.ProductoNombre || "")
+            );
+          });
+        resolve({ productos });
+      });
+    });
+  },
+
+  getReporteStock: () => {
+    return new Promise((resolve, reject) => {
+      // Incluye precio de costo por caja (ProductoPrecioPromedio) y la
+      // cantidad por caja para que el frontend calcule el valor del stock
+      // (capital inmovilizado) por producto y sume el total.
+      const query = `
+        SELECT
+          p.ProductoId,
+          p.ProductoCodigo,
+          p.ProductoNombre,
+          COALESCE(p.ProductoCantidadCaja, 0)   AS ProductoCantidadCaja,
+          COALESCE(p.ProductoPrecioPromedio, 0) AS ProductoPrecioPromedio,
+          COALESCE(p.ProductoPrecioVenta, 0)    AS ProductoPrecioVenta,
+          COALESCE(p.ProductoStock, 0)          AS ProductoStock,
+          COALESCE(p.ProductoStockUnitario, 0)  AS ProductoStockUnitario,
           pa.AlmacenId,
           a.AlmacenNombre,
-          COALESCE(pa.ProductoAlmacenStock, 0) AS ProductoAlmacenStock,
-          COALESCE(pa.ProductoAlmacenStockUnitario, 0) AS ProductoAlmacenStockUnitario
+          COALESCE(pa.ProductoAlmacenStock, 0)          AS ProductoAlmacenStock,
+          COALESCE(pa.ProductoAlmacenStockUnitario, 0)  AS ProductoAlmacenStockUnitario
         FROM producto p
         LEFT JOIN productoalmacen pa ON p.ProductoId = pa.ProductoId
         LEFT JOIN Almacen a ON pa.AlmacenId = a.AlmacenId
-        ORDER BY p.ProductoCodigo, a.AlmacenNombre
+        ORDER BY p.ProductoNombre, a.AlmacenNombre
       `;
       db.query(query, [], (err, rows) => {
         if (err) return reject(err);
@@ -557,19 +658,20 @@ const Producto = {
               ProductoId: row.ProductoId,
               ProductoCodigo: row.ProductoCodigo,
               ProductoNombre: row.ProductoNombre,
-              // Usar directamente los valores de la tabla producto
+              ProductoCantidadCaja: Number(row.ProductoCantidadCaja) || 0,
+              ProductoPrecioPromedio: Number(row.ProductoPrecioPromedio) || 0,
+              ProductoPrecioVenta: Number(row.ProductoPrecioVenta) || 0,
               ProductoStock: Number(row.ProductoStock) || 0,
               ProductoStockUnitario: Number(row.ProductoStockUnitario) || 0,
               productoAlmacen: [],
             };
           }
-          const totalStock = Number(row.ProductoAlmacenStock) || 0;
-          const totalUnit = Number(row.ProductoAlmacenStockUnitario) || 0;
           if (row.AlmacenId != null) {
             byProduct[id].productoAlmacen.push({
               AlmacenNombre: row.AlmacenNombre || "",
-              ProductoAlmacenStock: totalStock,
-              ProductoAlmacenStockUnitario: totalUnit,
+              ProductoAlmacenStock: Number(row.ProductoAlmacenStock) || 0,
+              ProductoAlmacenStockUnitario:
+                Number(row.ProductoAlmacenStockUnitario) || 0,
             });
           }
         });

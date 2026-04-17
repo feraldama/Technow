@@ -181,3 +181,51 @@ export const getReporteMovimientosProductos = async (
     );
   }
 };
+
+export interface ProductoMasVendidoRow {
+  ProductoId: number;
+  ProductoCodigo: string;
+  ProductoNombre: string;
+  /** Cantidad de unidades que entran en una caja del producto. 0 si no aplica. */
+  ProductoCantidadCaja: number;
+  ProductoPrecioVenta: number;
+  ProductoPrecioUnitario: number;
+  ProductoPrecioPromedio: number;
+  ProductoStock: number;
+  ProductoStockUnitario: number;
+  /** Total de unidades vendidas ya normalizado (cajas * cantCaja + unidades). */
+  CantidadVendidaTotalUnidades: number;
+  MontoVendido: number;
+  CostoVendido: number;
+}
+
+export interface ReporteMasVendidosResponse {
+  productos: ProductoMasVendidoRow[];
+  fechaDesde: string;
+  fechaHasta: string;
+}
+
+/**
+ * Reporte de productos más vendidos en un rango de fechas, ordenado de mayor
+ * a menor cantidad total vendida (en unidades). La cantidad ya viene
+ * normalizada a unidades (cajas convertidas con ProductoCantidadCaja); el
+ * frontend divide nuevamente para mostrar "cajas + unidades".
+ */
+export const getReporteMasVendidos = async (
+  fechaDesde: string,
+  fechaHasta: string
+): Promise<ReporteMasVendidosResponse> => {
+  try {
+    const response = await api.get("/productos/reporte-mas-vendidos", {
+      params: { fechaDesde, fechaHasta },
+    });
+    return response.data?.data as ReporteMasVendidosResponse;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw (
+      axiosError.response?.data || {
+        message: "Error al generar el reporte de productos más vendidos",
+      }
+    );
+  }
+};
