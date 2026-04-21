@@ -838,6 +838,14 @@ export default function Sales() {
       return;
     }
 
+    // Solo autoseleccionar el primer resultado cuando el término es un código
+    // (solo dígitos). Para búsquedas por nombre dejamos que el usuario elija.
+    const esCodigo = /^\d+$/.test(busqueda.trim());
+    if (!esCodigo) {
+      setBusquedaDebounced(busqueda);
+      return;
+    }
+
     // Si los resultados actuales ya corresponden al término tipeado, agregar
     // el primer producto inmediatamente y limpiar el input para el próximo
     // escaneo/búsqueda.
