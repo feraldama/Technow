@@ -133,6 +133,11 @@ export default function Sales() {
   const cantidadRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flag para indicar "al llegar los próximos resultados de búsqueda, agregar
+  // el primer producto al carrito". Se activa cuando el usuario presiona Enter
+  // con una búsqueda pendiente de aplicarse (flujo tipo scanner de código de
+  // barras / Enter tras tipear el nombre).
+  const addFirstOnNextResultsRef = useRef(false);
 
   useEffect(() => {
     if (selectedProductId !== null && cantidadRefs.current[selectedProductId]) {
@@ -299,6 +304,19 @@ export default function Sales() {
       fetchProductos();
     }
   }, [fetchProductos, cajaAperturada]);
+
+  // Cuando el usuario presiona Enter con una búsqueda pendiente, esperamos a
+  // que lleguen los resultados y agregamos el primer producto. Dejamos el
+  // input limpio y con foco para encadenar múltiples escaneos/búsquedas.
+  useEffect(() => {
+    if (!addFirstOnNextResultsRef.current) return;
+    if (loading) return;
+    addFirstOnNextResultsRef.current = false;
+    agregarPrimerProductoVisible();
+    setBusqueda("");
+    searchInputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, productos]);
 
   // Efecto para buscar cuando cambia el término de búsqueda (con debounce)
   useEffect(() => {
@@ -801,9 +819,10 @@ export default function Sales() {
   };
 
   // --- Función para manejar ENTER en la búsqueda ---
-  // Aplica la búsqueda inmediatamente (salteando el debounce) pero no agrega
-  // ningún producto al carrito. El usuario tiene que elegir el producto de la
-  // lista haciendo click en su tarjeta.
+  // Aplica la búsqueda inmediatamente (salteando el debounce) y agrega el
+  // primer producto de la lista filtrada al carrito. Si los resultados ya
+  // están listos para el término actual, los agrega en el acto; si todavía
+  // no llegaron, deja un flag para agregarlos al completar el próximo fetch.
   const handleSearchSubmit = () => {
     if (!cajaAperturada) return;
 
@@ -812,7 +831,44 @@ export default function Sales() {
       debounceTimeoutRef.current = null;
     }
 
+    // Sin término de búsqueda: solo sincronizamos el debounce (no agregamos
+    // nada — evitamos agregar un producto arbitrario de la lista sin filtrar).
+    if (!busqueda.trim()) {
+      setBusquedaDebounced(busqueda);
+      return;
+    }
+
+    // Si los resultados actuales ya corresponden al término tipeado, agregar
+    // el primer producto inmediatamente y limpiar el input para el próximo
+    // escaneo/búsqueda.
+    if (busqueda === busquedaDebounced && !loading) {
+      agregarPrimerProductoVisible();
+      setBusqueda("");
+      return;
+    }
+
+    // Todavía no hay resultados para este término: disparar la búsqueda y
+    // dejar flag para que el useEffect agregue el primer producto al llegar.
+    addFirstOnNextResultsRef.current = true;
     setBusquedaDebounced(busqueda);
+  };
+
+  // Agrega el primer producto visible al carrito (helper compartido por el
+  // Enter inmediato y por el efecto que espera los resultados asíncronos).
+  const agregarPrimerProductoVisible = () => {
+    if (productos.length === 0) return;
+    const p = productos[0];
+    agregarProducto({
+      id: p.ProductoId,
+      nombre: p.ProductoNombre,
+      precio: p.ProductoPrecioVenta,
+      precioMayorista: p.ProductoPrecioVentaMayorista,
+      imagen: p.ProductoImagen
+        ? `data:image/jpeg;base64,${p.ProductoImagen}`
+        : logo,
+      stock: p.ProductoStock,
+      precioUnitario: p.ProductoPrecioUnitario,
+    });
   };
 
   return (
