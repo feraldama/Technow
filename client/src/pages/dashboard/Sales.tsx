@@ -801,56 +801,18 @@ export default function Sales() {
   };
 
   // --- Función para manejar ENTER en la búsqueda ---
-  const handleSearchSubmit = async () => {
-    if (!busqueda.trim() || !cajaAperturada) return;
+  // Aplica la búsqueda inmediatamente (salteando el debounce) pero no agrega
+  // ningún producto al carrito. El usuario tiene que elegir el producto de la
+  // lista haciendo click en su tarjeta.
+  const handleSearchSubmit = () => {
+    if (!cajaAperturada) return;
 
-    // Cancelar el debounce pendiente si existe
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
       debounceTimeoutRef.current = null;
     }
 
-    // Actualizar busquedaDebounced inmediatamente para evitar que el debounce se ejecute después
     setBusquedaDebounced(busqueda);
-
-    try {
-      // Buscar sin filtro de localId; el filtro por LocalId=0 || LocalId=usuario
-      // se aplica client-side abajo para incluir productos universales.
-      const data = await searchProductos(busqueda.trim(), 1, 10);
-      const localUsuario = Number(user?.LocalId);
-      const productosFiltrados = (data.data || []).filter(
-        (p: { LocalId: string | number }) => {
-          const localProd = Number(p.LocalId);
-          return (
-            localProd === 0 || (localUsuario && localProd === localUsuario)
-          );
-        },
-      );
-
-      // Agregar el primer producto encontrado
-      if (productosFiltrados.length > 0) {
-        const primerProducto = productosFiltrados[0];
-
-        // Agregar el producto al carrito
-        agregarProducto({
-          id: primerProducto.ProductoId,
-          nombre: primerProducto.ProductoNombre,
-          precio: primerProducto.ProductoPrecioVenta,
-          precioMayorista: primerProducto.ProductoPrecioVentaMayorista,
-          imagen: primerProducto.ProductoImagen
-            ? `data:image/jpeg;base64,${primerProducto.ProductoImagen}`
-            : logo,
-          stock: primerProducto.ProductoStock,
-          precioUnitario: primerProducto.ProductoPrecioUnitario,
-        });
-
-        // Limpiar la búsqueda
-        setBusqueda("");
-        setBusquedaDebounced("");
-      }
-    } catch (error) {
-      console.error("Error al buscar producto:", error);
-    }
   };
 
   return (

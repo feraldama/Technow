@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import SearchButton from "../../components/common/Input/SearchButton";
 import "../../App.css";
-import { getProductosAll } from "../../services/productos.service";
+import {
+  getProductosPaginated,
+  searchProductos,
+} from "../../services/productos.service";
+import Pagination from "../../components/common/Pagination";
 import ProductCard from "../../components/products/ProductCard";
 import { useAuth } from "../../contexts/useAuth";
 import Swal from "sweetalert2";
@@ -59,6 +63,15 @@ export default function Compras() {
     }[]
   >([]);
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaDebounced, setBusquedaDebounced] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    itemsPerPage: 10,
+  });
   const [productos, setProductos] = useState<
     {
       ProductoId: number;
@@ -99,6 +112,7 @@ export default function Compras() {
   );
   const cantidadRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (selectedProductId !== null && cantidadRefs.current[selectedProductId]) {
@@ -184,14 +198,72 @@ export default function Compras() {
     setCompraEntrega(total);
   }, [total]);
 
-  useEffect(() => {
+  // Carga paginada de productos (antes se traía todo el catálogo al entrar,
+  // lo que demoraba varios segundos). Con paginación + búsqueda remota cada
+  // pedido devuelve sólo la página visible.
+  const fetchProductos = useCallback(async () => {
     setLoading(true);
-    getProductosAll()
-      .then((data) => {
-        setProductos(data.data || []);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const data = busquedaDebounced.trim()
+        ? await searchProductos(
+            busquedaDebounced.trim(),
+            currentPage,
+            itemsPerPage,
+          )
+        : await getProductosPaginated(currentPage, itemsPerPage);
 
+      // Igual que en Ventas: LocalId=0 son productos "universales" que se
+      // muestran a cualquier local. Filtro client-side porque el backend no
+      // acepta "este local o el 0".
+      const localUsuario = Number(user?.LocalId);
+      const productosFiltrados = (data.data || []).filter(
+        (p: { LocalId: string | number }) => {
+          const localProd = Number(p.LocalId);
+          return (
+            localProd === 0 || (localUsuario && localProd === localUsuario)
+          );
+        },
+      );
+
+      setProductos(productosFiltrados);
+      setPagination({
+        totalItems: data.pagination?.totalItems || 0,
+        totalPages: data.pagination?.totalPages || 1,
+        currentPage: data.pagination?.currentPage || 1,
+        itemsPerPage: data.pagination?.itemsPerPage || itemsPerPage,
+      });
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+      setProductos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [busquedaDebounced, currentPage, itemsPerPage, user?.LocalId]);
+
+  useEffect(() => {
+    fetchProductos();
+  }, [fetchProductos]);
+
+  // Debounce de 500ms entre lo que se tipea y la búsqueda remota.
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    setCurrentPage(1);
+    const timeoutId = setTimeout(() => {
+      setBusquedaDebounced(busqueda);
+      debounceTimeoutRef.current = null;
+    }, 500);
+    debounceTimeoutRef.current = timeoutId;
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+    };
+  }, [busqueda]);
+
+  useEffect(() => {
     getAllProveedoresSinPaginacion()
       .then((data) => {
         setProveedores(data.data || []);
@@ -444,35 +516,15 @@ export default function Compras() {
     );
   };
 
+  // ENTER dispara la búsqueda remota inmediatamente (saltea el debounce).
+  // No agrega ningún producto al carrito: el usuario elige clickeando la
+  // tarjeta que aparezca en la grilla.
   const handleSearchSubmit = () => {
-    if (!busqueda.trim()) return;
-
-    const productosFiltrados = productos.filter(
-      (p) =>
-        (p.ProductoNombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          (p.ProductoCodigo &&
-            String(p.ProductoCodigo)
-              .toLowerCase()
-              .includes(busqueda.toLowerCase()))) &&
-        (Number(p.LocalId) === 0 || Number(p.LocalId) === Number(user?.LocalId))
-    );
-
-    if (productosFiltrados.length > 0) {
-      const primerProducto = productosFiltrados[0];
-      agregarProducto({
-        id: primerProducto.ProductoId,
-        nombre: primerProducto.ProductoNombre,
-        precio: primerProducto.ProductoPrecioPromedio
-          ? Number(primerProducto.ProductoPrecioPromedio)
-          : primerProducto.ProductoPrecioVenta,
-        imagen: primerProducto.ProductoImagen
-          ? `data:image/jpeg;base64,${primerProducto.ProductoImagen}`
-          : logo,
-        stock: primerProducto.ProductoStock,
-        precioVentaActual: primerProducto.ProductoPrecioVenta,
-      });
-      setBusqueda("");
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
     }
+    setBusquedaDebounced(busqueda);
   };
 
   return (
@@ -831,58 +883,65 @@ export default function Compras() {
             }}
           >
             {loading ? (
-              <div>Cargando productos...</div>
+              <div className="col-span-full text-center py-8 text-gray-500">
+                Cargando productos...
+              </div>
+            ) : productos.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                No se encontraron productos
+              </div>
             ) : (
-              productos
-                .filter(
-                  (p) =>
-                    (p.ProductoNombre.toLowerCase().includes(
-                      busqueda.toLowerCase()
-                    ) ||
-                      (p.ProductoCodigo &&
-                        String(p.ProductoCodigo)
-                          .toLowerCase()
-                          .includes(busqueda.toLowerCase()))) &&
-                    (Number(p.LocalId) === 0 ||
-                      Number(p.LocalId) === Number(user?.LocalId))
-                )
-                .map((p) => (
-                  <ProductCard
-                    key={p.ProductoId}
-                    nombre={p.ProductoNombre}
-                    precio={
-                      p.ProductoPrecioPromedio
+              productos.map((p) => (
+                <ProductCard
+                  key={p.ProductoId}
+                  nombre={p.ProductoNombre}
+                  precio={
+                    p.ProductoPrecioPromedio
+                      ? Number(p.ProductoPrecioPromedio)
+                      : p.ProductoPrecioVenta
+                  }
+                  precioMayorista={p.ProductoPrecioVentaMayorista}
+                  clienteTipo="MI"
+                  imagen={
+                    p.ProductoImagen
+                      ? `data:image/jpeg;base64,${p.ProductoImagen}`
+                      : logo
+                  }
+                  stock={p.ProductoStock}
+                  onAdd={() =>
+                    agregarProducto({
+                      id: p.ProductoId,
+                      nombre: p.ProductoNombre,
+                      precio: p.ProductoPrecioPromedio
                         ? Number(p.ProductoPrecioPromedio)
-                        : p.ProductoPrecioVenta
-                    }
-                    precioMayorista={p.ProductoPrecioVentaMayorista}
-                    clienteTipo="MI"
-                    imagen={
-                      p.ProductoImagen
+                        : p.ProductoPrecioVenta,
+                      imagen: p.ProductoImagen
                         ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                        : logo
-                    }
-                    stock={p.ProductoStock}
-                    onAdd={() =>
-                      agregarProducto({
-                        id: p.ProductoId,
-                        nombre: p.ProductoNombre,
-                        precio: p.ProductoPrecioPromedio
-                          ? Number(p.ProductoPrecioPromedio)
-                          : p.ProductoPrecioVenta,
-                        imagen: p.ProductoImagen
-                          ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                          : logo,
-                        stock: p.ProductoStock,
-                        precioVentaActual: p.ProductoPrecioVenta,
-                      })
-                    }
-                    precioUnitario={0}
-                    stockUnitario={p.ProductoStockUnitario}
-                  />
-                ))
+                        : logo,
+                      stock: p.ProductoStock,
+                      precioVentaActual: p.ProductoPrecioVenta,
+                    })
+                  }
+                  precioUnitario={0}
+                  stockUnitario={p.ProductoStockUnitario}
+                />
+              ))
             )}
           </div>
+          {!loading && productos.length > 0 && pagination.totalPages > 1 && (
+            <div className="bg-white rounded-lg shadow p-4 mt-4">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={pagination.itemsPerPage}
+                onItemsPerPageChange={(newItemsPerPage) => {
+                  setItemsPerPage(newItemsPerPage);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
