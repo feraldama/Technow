@@ -587,7 +587,24 @@ export default function Sales() {
         allowOutsideClick: false,
         allowEscapeKey: false,
       }).then(() => {
-        window.location.reload();
+        setCarrito([]);
+        setSelectedProductId(null);
+        setBusqueda("");
+        setBusquedaDebounced("");
+        setCurrentPage(1);
+        setShowInvoicePrintModal(false);
+        setClienteSeleccionado({
+          ClienteId: 1,
+          ClienteNombre: "SIN NOMBRE MINORISTA",
+          ClienteRUC: "",
+          ClienteTelefono: "",
+          ClienteTipo: "MI",
+          UsuarioId: "",
+          ClienteApellido: "",
+          ClienteDireccion: "",
+        });
+        fetchProductos();
+        searchInputRef.current?.focus();
       });
     } catch (error) {
       console.error(error);
