@@ -8,6 +8,7 @@ import {
   type ClienteFilters,
 } from "../../services/clientes.service";
 import CustomersList from "../../components/customers/CustomersList";
+import type { Cliente } from "../../components/common/ClienteFormModal";
 import Pagination from "../../components/common/Pagination";
 import Swal from "sweetalert2";
 import { usePermiso } from "../../hooks/usePermiso";
@@ -16,19 +17,6 @@ import {
   ErrorState,
   PermissionDenied,
 } from "../../components/common/ui";
-
-interface Cliente {
-  id: string | number;
-  ClienteId: string;
-  ClienteRUC: string;
-  ClienteNombre: string;
-  ClienteApellido: string;
-  ClienteDireccion: string;
-  ClienteTelefono: string;
-  ClienteTipo: string;
-  UsuarioId: string;
-  [key: string]: unknown;
-}
 
 interface Pagination {
   totalItems: number;
@@ -127,7 +115,9 @@ export default function CustomersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (cliente: Cliente) => {
+    if (cliente.ClienteId == null) return;
+    const id = String(cliente.ClienteId);
     Swal.fire({
       title: "¿Estás seguro?",
       text: "¡No podrás revertir esto!",
@@ -148,7 +138,7 @@ export default function CustomersPage() {
           setClientesData((prev) => ({
             ...prev,
             clientes: prev.clientes.filter(
-              (cliente) => cliente.ClienteId !== id
+              (c) => String(c.ClienteId) !== id
             ),
           }));
         } catch (error: unknown) {
@@ -184,8 +174,11 @@ export default function CustomersPage() {
           ? String(clienteData.UsuarioId).trim()
           : "",
       };
-      if (currentCliente) {
-        await updateCliente(currentCliente.ClienteId, clienteDataTrimmed);
+      if (currentCliente && currentCliente.ClienteId != null) {
+        await updateCliente(
+          String(currentCliente.ClienteId),
+          clienteDataTrimmed
+        );
         mensaje = "Cliente actualizado exitosamente";
       } else {
         const response = await createCliente(clienteDataTrimmed);
@@ -236,11 +229,7 @@ export default function CustomersPage() {
       <h1 className="text-2xl font-medium mb-3">Gestión de Clientes</h1>
       <CustomersList
         clientes={clientesData.clientes.map((c) => ({ ...c, id: c.ClienteId }))}
-        onDelete={
-          puedeEliminar
-            ? (cliente) => handleDelete(cliente.ClienteId)
-            : undefined
-        }
+        onDelete={puedeEliminar ? handleDelete : undefined}
         onEdit={puedeEditar ? handleEdit : undefined}
         onCreate={puedeCrear ? handleCreate : undefined}
         pagination={clientesData.pagination}
