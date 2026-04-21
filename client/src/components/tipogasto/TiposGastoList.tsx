@@ -251,7 +251,7 @@ export default function TiposGastoList({
                               {editGrupoId === g.TipoGastoGrupoId ? (
                                 <>
                                   <input
-                                    className="border rounded px-2 py-1 text-sm"
+                                    className="border rounded px-2 py-1 text-sm uppercase"
                                     value={editGrupoDesc}
                                     onChange={(e) =>
                                       setEditGrupoDesc(e.target.value)
@@ -267,7 +267,7 @@ export default function TiposGastoList({
                                           g.TipoGastoGrupoId,
                                           {
                                             TipoGastoGrupoDescripcion:
-                                              editGrupoDesc,
+                                              editGrupoDesc.toUpperCase(),
                                           }
                                         );
                                         setEditGrupoId(null);
@@ -404,7 +404,7 @@ export default function TiposGastoList({
                         </ul>
                         <div className="flex gap-2 mt-2">
                           <input
-                            className="border rounded px-2 py-1 text-sm flex-1"
+                            className="border rounded px-2 py-1 text-sm flex-1 uppercase"
                             placeholder="Nuevo grupo..."
                             value={nuevoGrupo}
                             onChange={(e) => setNuevoGrupo(e.target.value)}
@@ -416,7 +416,8 @@ export default function TiposGastoList({
                               if (!nuevoGrupo.trim()) return;
                               const res = await createTipoGastoGrupo({
                                 TipoGastoId: currentTipoGasto.TipoGastoId,
-                                TipoGastoGrupoDescripcion: nuevoGrupo,
+                                TipoGastoGrupoDescripcion:
+                                  nuevoGrupo.toUpperCase(),
                               });
                               setNuevoGrupo("");
                               setLoadingGrupos(true);
