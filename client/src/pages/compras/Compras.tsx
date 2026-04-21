@@ -113,6 +113,7 @@ export default function Compras() {
   const cantidadRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addFirstOnNextResultsRef = useRef(false);
 
   useEffect(() => {
     if (selectedProductId !== null && cantidadRefs.current[selectedProductId]) {
@@ -516,14 +517,64 @@ export default function Compras() {
     );
   };
 
+  // Agrega el primer producto visible al carrito (helper compartido por el
+  // Enter inmediato y por el efecto que espera los resultados asíncronos).
+  const agregarPrimerProductoVisible = () => {
+    if (productos.length === 0) return;
+    const p = productos[0];
+    agregarProducto({
+      id: p.ProductoId,
+      nombre: p.ProductoNombre,
+      precio: p.ProductoPrecioPromedio
+        ? Number(p.ProductoPrecioPromedio)
+        : p.ProductoPrecioVenta,
+      imagen: p.ProductoImagen
+        ? `data:image/jpeg;base64,${p.ProductoImagen}`
+        : logo,
+      stock: p.ProductoStock,
+      precioVentaActual: p.ProductoPrecioVenta,
+    });
+  };
+
+  // Cuando Enter dispara una búsqueda por código y los resultados todavía no
+  // llegaron, este efecto agrega el primer producto al llegar la respuesta.
+  useEffect(() => {
+    if (!addFirstOnNextResultsRef.current) return;
+    if (loading) return;
+    addFirstOnNextResultsRef.current = false;
+    agregarPrimerProductoVisible();
+    setBusqueda("");
+    searchInputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, productos]);
+
   // ENTER dispara la búsqueda remota inmediatamente (saltea el debounce).
-  // No agrega ningún producto al carrito: el usuario elige clickeando la
-  // tarjeta que aparezca en la grilla.
+  // Si el término son solo dígitos lo tratamos como código y agregamos el
+  // primer resultado; si tiene letras, solo filtramos y el usuario elige.
   const handleSearchSubmit = () => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
       debounceTimeoutRef.current = null;
     }
+
+    if (!busqueda.trim()) {
+      setBusquedaDebounced(busqueda);
+      return;
+    }
+
+    const esCodigo = /^\d+$/.test(busqueda.trim());
+    if (!esCodigo) {
+      setBusquedaDebounced(busqueda);
+      return;
+    }
+
+    if (busqueda === busquedaDebounced && !loading) {
+      agregarPrimerProductoVisible();
+      setBusqueda("");
+      return;
+    }
+
+    addFirstOnNextResultsRef.current = true;
     setBusquedaDebounced(busqueda);
   };
 
