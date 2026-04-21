@@ -84,15 +84,17 @@ export default function SearchButton({
   }, []);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFirstRender = useRef(true);
+  // Guarda el último `searchTerm` procesado. Comparar contra este valor hace
+  // que el efecto sea idempotente ante StrictMode (doble invocación en dev) y
+  // ante remounts del componente — sin la guarda, ambos escenarios disparan un
+  // submit fantasma que resetea la paginación de la página padre.
+  const lastSearchTermRef = useRef(searchTerm);
 
   // Auto-search debounceado al cambiar el searchTerm.
   useEffect(() => {
-    // No disparar en el mount inicial — la página ya hace el primer fetch.
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    if (lastSearchTermRef.current === searchTerm) return;
+    lastSearchTermRef.current = searchTerm;
+
     if (debounceMs <= 0) return;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
