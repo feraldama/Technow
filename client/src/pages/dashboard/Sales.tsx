@@ -131,6 +131,15 @@ export default function Sales() {
   // con una búsqueda pendiente de aplicarse (flujo tipo scanner de código de
   // barras / Enter tras tipear el nombre).
   const addFirstOnNextResultsRef = useRef(false);
+  // Término escaneado pendiente. Lo usamos para verificar que los resultados
+  // que llegan corresponden al código escaneado y no a un fetch previo (evita
+  // agregar un producto incorrecto por una condición de carrera entre fetches).
+  const pendingScanTermRef = useRef<string>("");
+  // Término al que corresponde el array `productos` actualmente cargado. Se
+  // actualiza recién cuando llega la respuesta del fetch. Se compara contra
+  // `pendingScanTermRef` para saber si los productos visibles realmente son
+  // los resultados del código escaneado (y no todavía los productos previos).
+  const productosForTermRef = useRef<string>("");
 
   useEffect(() => {
     if (selectedProductId !== null && cantidadRefs.current[selectedProductId]) {
@@ -263,6 +272,10 @@ export default function Sales() {
           );
 
       setProductos(data.data || []);
+      // Registrar a qué término corresponden estos productos, para que el
+      // efecto que agrega el primer producto sepa que ya llegó la respuesta
+      // del código escaneado (y no los productos previos).
+      productosForTermRef.current = busquedaDebounced.trim();
       setPagination({
         totalItems: data.pagination?.totalItems || 0,
         totalPages: data.pagination?.totalPages || 1,
@@ -272,9 +285,15 @@ export default function Sales() {
     } catch (error) {
       console.error("Error al cargar productos:", error);
       setProductos([]);
+      productosForTermRef.current = busquedaDebounced.trim();
     } finally {
       setLoading(false);
     }
+    // refreshKey se incrementa tras una venta para forzar el refetch de
+    // productos (regenera la identidad del callback y dispara el useEffect
+    // que llama a fetchProductos). No se lee dentro del cuerpo, por eso el
+    // linter lo marca como innecesario — la dependencia es intencional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cajaAperturada,
     busquedaDebounced,
@@ -302,7 +321,14 @@ export default function Sales() {
   useEffect(() => {
     if (!addFirstOnNextResultsRef.current) return;
     if (loading) return;
+    // Solo agregar cuando los productos actualmente cargados corresponden al
+    // término escaneado. `productosForTermRef` se actualiza recién cuando el
+    // fetch del término pendiente termina; mientras tanto sigue con el valor
+    // del fetch anterior, lo que evita agregar un producto de la página vieja.
+    if (pendingScanTermRef.current.trim() !== productosForTermRef.current)
+      return;
     addFirstOnNextResultsRef.current = false;
+    pendingScanTermRef.current = "";
     agregarPrimerProductoVisible();
     setBusqueda("");
     searchInputRef.current?.focus();
@@ -318,10 +344,13 @@ export default function Sales() {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Resetear página cuando cambia la búsqueda
-    setCurrentPage(1);
-
     const timeoutId = setTimeout(() => {
+      // Resetear página y aplicar término juntos, en un mismo batch, para que
+      // fetchProductos se dispare una sola vez con el estado coherente y no
+      // produzca un fetch intermedio con el término viejo (causa del bug en
+      // que se agregaba al carrito el primer producto de la página 1 sin
+      // filtrar).
+      setCurrentPage(1);
       setBusquedaDebounced(busqueda);
       debounceTimeoutRef.current = null;
     }, 500); // Debounce de 500ms
@@ -829,6 +858,7 @@ export default function Sales() {
     // Sin término de búsqueda: solo sincronizamos el debounce (no agregamos
     // nada — evitamos agregar un producto arbitrario de la lista sin filtrar).
     if (!busqueda.trim()) {
+      setCurrentPage(1);
       setBusquedaDebounced(busqueda);
       return;
     }
@@ -837,6 +867,7 @@ export default function Sales() {
     // (solo dígitos). Para búsquedas por nombre dejamos que el usuario elija.
     const esCodigo = /^\d+$/.test(busqueda.trim());
     if (!esCodigo) {
+      setCurrentPage(1);
       setBusquedaDebounced(busqueda);
       return;
     }
@@ -853,6 +884,8 @@ export default function Sales() {
     // Todavía no hay resultados para este término: disparar la búsqueda y
     // dejar flag para que el useEffect agregue el primer producto al llegar.
     addFirstOnNextResultsRef.current = true;
+    pendingScanTermRef.current = busqueda;
+    setCurrentPage(1);
     setBusquedaDebounced(busqueda);
   };
 
