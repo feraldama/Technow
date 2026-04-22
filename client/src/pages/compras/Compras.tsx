@@ -885,57 +885,62 @@ export default function Compras() {
 
         {/* Contenedor con scroll solo para los productos */}
         <div
-          className="overflow-y-auto"
+          className="flex flex-col"
           style={{ height: "calc(100vh - 120px)" }}
         >
-          <div
-            className="grid gap-4"
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            }}
-          >
-            {loading ? (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                Cargando productos...
-              </div>
-            ) : productos.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                No se encontraron productos
-              </div>
-            ) : (
-              productos.map((p) => (
-                <ProductCard
-                  key={p.ProductoId}
-                  nombre={p.ProductoNombre}
-                  precio={
-                    p.ProductoPrecioPromedio
-                      ? Number(p.ProductoPrecioPromedio)
-                      : p.ProductoPrecioVenta
-                  }
-                  precioMayorista={p.ProductoPrecioVentaMayorista}
-                  clienteTipo="MI"
-                  imagen={resolveProductoImagen(p.ProductoId, p.HasImagen)}
-                  stock={p.ProductoStock}
-                  onAdd={() =>
-                    agregarProducto({
-                      id: p.ProductoId,
-                      nombre: p.ProductoNombre,
-                      precio: p.ProductoPrecioPromedio
+          <div className="overflow-y-auto flex-1 mb-4">
+            <div
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              }}
+            >
+              {loading ? (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  Cargando productos...
+                </div>
+              ) : productos.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  No se encontraron productos
+                </div>
+              ) : (
+                productos.map((p) => (
+                  <ProductCard
+                    key={p.ProductoId}
+                    nombre={p.ProductoNombre}
+                    precio={
+                      p.ProductoPrecioPromedio
                         ? Number(p.ProductoPrecioPromedio)
-                        : p.ProductoPrecioVenta,
-                      imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
-                      stock: p.ProductoStock,
-                      precioVentaActual: p.ProductoPrecioVenta,
-                    })
-                  }
-                  precioUnitario={0}
-                  stockUnitario={p.ProductoStockUnitario}
-                />
-              ))
-            )}
+                        : p.ProductoPrecioVenta
+                    }
+                    precioMayorista={p.ProductoPrecioVentaMayorista}
+                    clienteTipo="MI"
+                    imagen={resolveProductoImagen(p.ProductoId, p.HasImagen)}
+                    stock={p.ProductoStock}
+                    onAdd={() =>
+                      agregarProducto({
+                        id: p.ProductoId,
+                        nombre: p.ProductoNombre,
+                        precio: p.ProductoPrecioPromedio
+                          ? Number(p.ProductoPrecioPromedio)
+                          : p.ProductoPrecioVenta,
+                        imagen: resolveProductoImagen(
+                          p.ProductoId,
+                          p.HasImagen
+                        ),
+                        stock: p.ProductoStock,
+                        precioVentaActual: p.ProductoPrecioVenta,
+                      })
+                    }
+                    precioUnitario={0}
+                    stockUnitario={p.ProductoStockUnitario}
+                  />
+                ))
+              )}
+            </div>
           </div>
           {!loading && productos.length > 0 && pagination.totalPages > 1 && (
-            <div className="bg-white rounded-lg shadow p-4 mt-4">
+            <div className="bg-white rounded-lg shadow p-4">
               <Pagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
