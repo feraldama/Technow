@@ -54,10 +54,13 @@ function buildProductoFiltersWhere(filters = {}) {
 const Producto = {
   getAll: () => {
     return new Promise((resolve, reject) => {
-      db.query("SELECT * FROM producto", (err, results) => {
-        if (err) reject(err);
-        resolve(results);
-      });
+      db.query(
+        `SELECT ${PRODUCTO_LIST_COLS} FROM producto p`,
+        (err, results) => {
+          if (err) reject(err);
+          resolve(results);
+        }
+      );
     });
   },
 

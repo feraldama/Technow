@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import SearchButton from "../../components/common/Input/SearchButton";
 import "../../App.css";
 import {
-  getProductosAll,
+  getProductosPaginated,
+  searchProductos,
   getProductoById,
   updateProducto,
 } from "../../services/productos.service";
 import { getAlmacenes } from "../../services/almacenes.service";
 import ProductCard from "../../components/products/ProductCard";
+import Pagination from "../../components/common/Pagination";
 import { useAuth } from "../../contexts/useAuth";
 import Swal from "sweetalert2";
 import { resolveProductoImagen } from "../../utils/productImage";
@@ -40,6 +42,7 @@ export default function Inventario() {
     { AlmacenId: number; AlmacenNombre: string }[]
   >([]);
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaDebounced, setBusquedaDebounced] = useState("");
   const [productos, setProductos] = useState<
     {
       ProductoId: number;
@@ -57,6 +60,17 @@ export default function Inventario() {
     }[]
   >([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    itemsPerPage: 10,
+  });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addFirstOnNextResultsRef = useRef(false);
   const { user } = useAuth();
   const puedeCrear = usePermiso("INVENTARIO", "crear");
   const puedeEditar = usePermiso("INVENTARIO", "editar");
@@ -216,14 +230,63 @@ export default function Inventario() {
     };
   };
 
-  useEffect(() => {
+  const fetchProductos = useCallback(async () => {
     setLoading(true);
-    getProductosAll()
-      .then((data) => {
-        setProductos(data.data || []);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    try {
+      const data = busquedaDebounced.trim()
+        ? await searchProductos(
+            busquedaDebounced.trim(),
+            currentPage,
+            itemsPerPage
+          )
+        : await getProductosPaginated(currentPage, itemsPerPage);
+
+      const localUsuario = Number(user?.LocalId);
+      const productosFiltrados = (data.data || []).filter(
+        (p: { LocalId: string | number }) => {
+          const localProd = Number(p.LocalId);
+          return (
+            localProd === 0 || (localUsuario && localProd === localUsuario)
+          );
+        }
+      );
+
+      setProductos(productosFiltrados);
+      setPagination({
+        totalItems: data.pagination?.totalItems || 0,
+        totalPages: data.pagination?.totalPages || 1,
+        currentPage: data.pagination?.currentPage || 1,
+        itemsPerPage: data.pagination?.itemsPerPage || itemsPerPage,
+      });
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+      setProductos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [busquedaDebounced, currentPage, itemsPerPage, user?.LocalId, refreshKey]);
+
+  useEffect(() => {
+    fetchProductos();
+  }, [fetchProductos]);
+
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    setCurrentPage(1);
+    const timeoutId = setTimeout(() => {
+      setBusquedaDebounced(busqueda);
+      debounceTimeoutRef.current = null;
+    }, 500);
+    debounceTimeoutRef.current = timeoutId;
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+    };
+  }, [busqueda]);
 
   useEffect(() => {
     if (user?.LocalId) {
@@ -280,7 +343,7 @@ export default function Inventario() {
         text: "El stock por almacén se actualizó correctamente.",
       }).then(() => {
         setCarrito([]);
-        getProductosAll().then((data) => setProductos(data.data || []));
+        setRefreshKey((k) => k + 1);
       });
     } catch (error: unknown) {
       console.error("Error al actualizar inventario:", error);
@@ -295,6 +358,17 @@ export default function Inventario() {
     }
   };
 
+  const agregarPrimerProductoVisible = () => {
+    if (productos.length === 0) return;
+    const p = productos[0];
+    agregarProducto({
+      id: p.ProductoId,
+      nombre: p.ProductoNombre,
+      imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
+      stock: p.ProductoStock,
+    });
+  };
+
   const handleSearchSubmit = () => {
     if (!busqueda.trim()) return;
 
@@ -307,30 +381,30 @@ export default function Inventario() {
       return;
     }
 
-    const productosFiltrados = productos.filter(
-      (p) =>
-        (p.ProductoNombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          (p.ProductoCodigo &&
-            String(p.ProductoCodigo)
-              .toLowerCase()
-              .includes(busqueda.toLowerCase()))) &&
-        (Number(p.LocalId) === 0 || Number(p.LocalId) === Number(user?.LocalId))
-    );
-
-    if (productosFiltrados.length > 0) {
-      const primerProducto = productosFiltrados[0];
-      agregarProducto({
-        id: primerProducto.ProductoId,
-        nombre: primerProducto.ProductoNombre,
-        imagen: resolveProductoImagen(
-          primerProducto.ProductoId,
-          primerProducto.HasImagen
-        ),
-        stock: primerProducto.ProductoStock,
-      });
-      setBusqueda("");
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
     }
+
+    if (busqueda === busquedaDebounced && !loading) {
+      agregarPrimerProductoVisible();
+      setBusqueda("");
+      return;
+    }
+
+    addFirstOnNextResultsRef.current = true;
+    setBusquedaDebounced(busqueda);
   };
+
+  useEffect(() => {
+    if (!addFirstOnNextResultsRef.current) return;
+    if (loading) return;
+    addFirstOnNextResultsRef.current = false;
+    agregarPrimerProductoVisible();
+    setBusqueda("");
+    searchInputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, productos]);
 
   if (!puedeLeer) return <PermissionDenied resource="el inventario" />;
 
@@ -548,32 +622,26 @@ export default function Inventario() {
 
         {/* Contenedor con scroll solo para los productos */}
         <div
-          className="overflow-y-auto"
+          className="flex flex-col"
           style={{ height: "calc(100vh - 120px)" }}
         >
-          <div
-            className="grid gap-4"
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            }}
-          >
-            {loading ? (
-              <div>Cargando productos...</div>
-            ) : (
-              productos
-                .filter(
-                  (p) =>
-                    (p.ProductoNombre.toLowerCase().includes(
-                      busqueda.toLowerCase()
-                    ) ||
-                      (p.ProductoCodigo &&
-                        String(p.ProductoCodigo)
-                          .toLowerCase()
-                          .includes(busqueda.toLowerCase()))) &&
-                    (Number(p.LocalId) === 0 ||
-                      Number(p.LocalId) === Number(user?.LocalId))
-                )
-                .map((p) => (
+          <div className="overflow-y-auto flex-1 mb-4">
+            <div
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              }}
+            >
+              {loading ? (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  Cargando productos...
+                </div>
+              ) : productos.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  No se encontraron productos
+                </div>
+              ) : (
+                productos.map((p) => (
                   <ProductCard
                     key={p.ProductoId}
                     nombre={p.ProductoNombre}
@@ -609,8 +677,23 @@ export default function Inventario() {
                     stockUnitario={p.ProductoStockUnitario}
                   />
                 ))
-            )}
+              )}
+            </div>
           </div>
+          {!loading && productos.length > 0 && pagination.totalPages > 1 && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={pagination.itemsPerPage}
+                onItemsPerPageChange={(newItemsPerPage) => {
+                  setItemsPerPage(newItemsPerPage);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
