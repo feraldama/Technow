@@ -233,25 +233,26 @@ export default function Inventario() {
   const fetchProductos = useCallback(async () => {
     setLoading(true);
     try {
+      const localUsuario = Number(user?.LocalId);
+      const filters = localUsuario ? { localIdOrZero: localUsuario } : undefined;
       const data = busquedaDebounced.trim()
         ? await searchProductos(
             busquedaDebounced.trim(),
             currentPage,
-            itemsPerPage
+            itemsPerPage,
+            undefined,
+            undefined,
+            filters
           )
-        : await getProductosPaginated(currentPage, itemsPerPage);
-
-      const localUsuario = Number(user?.LocalId);
-      const productosFiltrados = (data.data || []).filter(
-        (p: { LocalId: string | number }) => {
-          const localProd = Number(p.LocalId);
-          return (
-            localProd === 0 || (localUsuario && localProd === localUsuario)
+        : await getProductosPaginated(
+            currentPage,
+            itemsPerPage,
+            undefined,
+            undefined,
+            filters
           );
-        }
-      );
 
-      setProductos(productosFiltrados);
+      setProductos(data.data || []);
       setPagination({
         totalItems: data.pagination?.totalItems || 0,
         totalPages: data.pagination?.totalPages || 1,

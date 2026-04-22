@@ -31,6 +31,10 @@ function buildProductoFiltersWhere(filters = {}) {
     conditions.push("p.LocalId = ?");
     params.push(Number(filters.localId));
   }
+  if (filters.localIdOrZero != null && filters.localIdOrZero !== "") {
+    conditions.push("(p.LocalId = ? OR p.LocalId = 0)");
+    params.push(Number(filters.localIdOrZero));
+  }
   if (filters.stockMin != null && filters.stockMin !== "") {
     conditions.push("COALESCE(p.ProductoStock, 0) >= ?");
     params.push(Number(filters.stockMin));

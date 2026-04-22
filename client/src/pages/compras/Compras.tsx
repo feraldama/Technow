@@ -192,28 +192,29 @@ export default function Compras() {
   const fetchProductos = useCallback(async () => {
     setLoading(true);
     try {
+      // El backend filtra por el local del usuario incluyendo los productos
+      // "universales" (LocalId=0). Así la paginación ya devuelve exactamente
+      // los ítems visibles y no quedan páginas incompletas.
+      const localUsuario = Number(user?.LocalId);
+      const filters = localUsuario ? { localIdOrZero: localUsuario } : undefined;
       const data = busquedaDebounced.trim()
         ? await searchProductos(
             busquedaDebounced.trim(),
             currentPage,
             itemsPerPage,
+            undefined,
+            undefined,
+            filters,
           )
-        : await getProductosPaginated(currentPage, itemsPerPage);
-
-      // Igual que en Ventas: LocalId=0 son productos "universales" que se
-      // muestran a cualquier local. Filtro client-side porque el backend no
-      // acepta "este local o el 0".
-      const localUsuario = Number(user?.LocalId);
-      const productosFiltrados = (data.data || []).filter(
-        (p: { LocalId: string | number }) => {
-          const localProd = Number(p.LocalId);
-          return (
-            localProd === 0 || (localUsuario && localProd === localUsuario)
+        : await getProductosPaginated(
+            currentPage,
+            itemsPerPage,
+            undefined,
+            undefined,
+            filters,
           );
-        },
-      );
 
-      setProductos(productosFiltrados);
+      setProductos(data.data || []);
       setPagination({
         totalItems: data.pagination?.totalItems || 0,
         totalPages: data.pagination?.totalPages || 1,

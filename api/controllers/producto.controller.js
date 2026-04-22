@@ -7,6 +7,10 @@ function extractProductoFilters(query) {
     const local = parseInt(query.localId, 10);
     if (!isNaN(local)) filters.localId = local;
   }
+  if (query.localIdOrZero !== undefined && query.localIdOrZero !== "") {
+    const local = parseInt(query.localIdOrZero, 10);
+    if (!isNaN(local)) filters.localIdOrZero = local;
+  }
   if (query.stockMin !== undefined && query.stockMin !== "")
     filters.stockMin = query.stockMin;
   if (query.stockMax !== undefined && query.stockMax !== "")

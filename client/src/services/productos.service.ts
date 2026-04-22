@@ -3,6 +3,7 @@ import type { AxiosError } from "axios";
 
 export interface ProductoFilters {
   localId?: string | number | null;
+  localIdOrZero?: string | number | null;
   stockMin?: number | string;
   stockMax?: number | string;
   precioMin?: number | string;
@@ -16,6 +17,8 @@ const applyProductoFilters = (
   if (!filters) return;
   if (filters.localId != null && filters.localId !== "")
     params.localId = filters.localId;
+  if (filters.localIdOrZero != null && filters.localIdOrZero !== "")
+    params.localIdOrZero = filters.localIdOrZero;
   if (filters.stockMin != null && filters.stockMin !== "")
     params.stockMin = filters.stockMin;
   if (filters.stockMax != null && filters.stockMax !== "")

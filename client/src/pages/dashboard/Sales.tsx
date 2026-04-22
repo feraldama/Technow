@@ -240,32 +240,29 @@ export default function Sales() {
 
     setLoading(true);
     try {
-      // No filtramos por localId en el backend: necesitamos incluir productos
-      // "universales" (LocalId=0) además de los del local del usuario, y eso
-      // lo resuelve el filtro client-side de abajo.
-      let data;
-      if (busquedaDebounced.trim()) {
-        data = await searchProductos(
-          busquedaDebounced.trim(),
-          currentPage,
-          itemsPerPage,
-        );
-      } else {
-        data = await getProductosPaginated(currentPage, itemsPerPage);
-      }
-
-      // Filtrar productos por LocalId: mostrar si es 0 (todos) o si coincide con el local del usuario
+      // El backend filtra por el local del usuario incluyendo los productos
+      // "universales" (LocalId=0). Así la paginación ya devuelve exactamente
+      // los ítems visibles y no quedan páginas incompletas.
       const localUsuario = Number(user?.LocalId);
-      const productosFiltrados = (data.data || []).filter(
-        (p: { LocalId: string | number }) => {
-          const localProd = Number(p.LocalId);
-          return (
-            localProd === 0 || (localUsuario && localProd === localUsuario)
+      const filters = localUsuario ? { localIdOrZero: localUsuario } : undefined;
+      const data = busquedaDebounced.trim()
+        ? await searchProductos(
+            busquedaDebounced.trim(),
+            currentPage,
+            itemsPerPage,
+            undefined,
+            undefined,
+            filters,
+          )
+        : await getProductosPaginated(
+            currentPage,
+            itemsPerPage,
+            undefined,
+            undefined,
+            filters,
           );
-        },
-      );
 
-      setProductos(productosFiltrados);
+      setProductos(data.data || []);
       setPagination({
         totalItems: data.pagination?.totalItems || 0,
         totalPages: data.pagination?.totalPages || 1,
