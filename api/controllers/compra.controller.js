@@ -1,4 +1,5 @@
 const Compra = require("../models/compra.model");
+const { sendError } = require("../utils/errors");
 const CompraProducto = require("../models/compraproducto.model");
 
 function extractCompraFilters(query) {
@@ -40,7 +41,8 @@ exports.getAllCompras = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -99,7 +101,8 @@ exports.getCompraById = async (req, res) => {
 
     res.json(compra);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -171,7 +174,6 @@ exports.createCompra = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al crear compra",
-      error: error.message,
     });
   }
 };
@@ -231,7 +233,6 @@ exports.updateCompra = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al actualizar compra",
-      error: error.message,
     });
   }
 };
@@ -257,6 +258,7 @@ exports.deleteCompra = async (req, res) => {
       message: "Compra eliminada exitosamente",
     });
   } catch (error) {
+    console.error(error);
     if (
       error &&
       error.message &&
@@ -272,7 +274,6 @@ exports.deleteCompra = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al eliminar compra",
-      error: error.message,
     });
   }
 };
@@ -283,7 +284,8 @@ exports.getAllComprasSinPaginacion = async (req, res) => {
     const compras = await Compra.getAll();
     res.json({ data: compras });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -294,6 +296,7 @@ exports.getProductosByCompraId = async (req, res) => {
     const productos = await CompraProducto.getByCompraId(id);
     res.json({ data: productos });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };

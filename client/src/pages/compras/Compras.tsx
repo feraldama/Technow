@@ -9,9 +9,8 @@ import Pagination from "../../components/common/Pagination";
 import ProductCard from "../../components/products/ProductCard";
 import { useAuth } from "../../contexts/useAuth";
 import Swal from "sweetalert2";
-import axios from "axios";
-import { js2xml } from "xml-js";
-import logo from "../../assets/img/logo.jpg";
+import { callGenexusSoap } from "../../services/genexus-soap.service";
+import { resolveProductoImagen } from "../../utils/productImage";
 import {
   getAllProveedoresSinPaginacion,
   createProveedor,
@@ -24,13 +23,7 @@ import { getEstadoAperturaPorUsuario } from "../../services/registrodiariocaja.s
 import { getCajaById } from "../../services/cajas.service";
 import { getLocalById } from "../../services/locales.service";
 
-interface Proveedor {
-  ProveedorId: number;
-  ProveedorRUC: string;
-  ProveedorNombre: string;
-  ProveedorDireccion?: string;
-  ProveedorTelefono?: string;
-}
+import type { Proveedor } from "../../types";
 
 interface CreateProveedorData {
   ProveedorRUC: string;
@@ -39,13 +32,7 @@ interface CreateProveedorData {
   ProveedorTelefono?: string;
 }
 
-interface Caja {
-  id: string | number;
-  CajaId: string | number;
-  CajaDescripcion: string;
-  CajaMonto: number;
-  [key: string]: unknown;
-}
+import type { Caja } from "../../types";
 
 export default function Compras() {
   const [carrito, setCarrito] = useState<
@@ -80,7 +67,7 @@ export default function Compras() {
       ProductoPrecioVenta: number;
       ProductoPrecioPromedio?: string;
       ProductoStock: number;
-      ProductoImagen?: string;
+      HasImagen?: number | boolean;
       ProductoPrecioVentaMayorista: number;
       LocalId: string | number;
       ProductoPrecioUnitario: number;
@@ -388,52 +375,21 @@ export default function Compras() {
       },
     }));
 
-    const json = {
-      Envelope: {
-        _attributes: {
-          xmlns: "http://schemas.xmlsoap.org/soap/envelope/",
-        },
-        Body: {
-          "PCompraConfirmarWS.VENTACONFIRMAR": {
-            _attributes: { xmlns: "Tech" },
-            Sdtcompra: {
-              SDTCompraItem: SDTCompraItem,
-            },
-            Comprafechastring: fechaFormateada,
-            Comprafactura: parseInt(compraFactura),
-            Compratipo: compraTipo,
-            Entregado: compraEntrega,
-            Total: total,
-            Usuarioid: user.id,
-          },
-        },
-      },
-    };
-
-    const xml = js2xml(json, {
-      compact: true,
-      ignoreComment: true,
-      spaces: 4,
-    });
-
-    // Verificar que el XML tenga todos los productos
-    const productosEnXML = (xml.match(/SDTCompraItem/g) || []).length;
-    console.log("Productos encontrados en XML:", productosEnXML);
-
-    const config = {
-      headers: {
-        "Content-Type": "text/xml",
-      },
-    };
-
     try {
-      await axios.post(
-        `${import.meta.env.VITE_APP_URL}${
-          import.meta.env.VITE_APP_URL_GENEXUS
-        }apcompraconfirmarws`,
-        xml,
-        config
-      );
+      await callGenexusSoap({
+        endpoint: "apcompraconfirmarws",
+        operation: "PCompraConfirmarWS.VENTACONFIRMAR",
+        namespace: "Tech",
+        payload: {
+          Sdtcompra: { SDTCompraItem: SDTCompraItem },
+          Comprafechastring: fechaFormateada,
+          Comprafactura: parseInt(compraFactura),
+          Compratipo: compraTipo,
+          Entregado: compraEntrega,
+          Total: total,
+          Usuarioid: user.id,
+        },
+      });
 
       // El webservice SOAP se encarga de crear la compra en la base de datos
 
@@ -468,7 +424,14 @@ export default function Compras() {
         },
       }).then((result) => {
         if (result.dismiss === Swal.DismissReason.timer) {
-          window.location.reload();
+          setCarrito([]);
+          setSelectedProductId(null);
+          setBusqueda("");
+          setBusquedaDebounced("");
+          setCurrentPage(1);
+          setProveedorSeleccionado(null);
+          fetchProductos();
+          searchInputRef.current?.focus();
         }
       });
     } catch (error: unknown) {
@@ -528,9 +491,7 @@ export default function Compras() {
       precio: p.ProductoPrecioPromedio
         ? Number(p.ProductoPrecioPromedio)
         : p.ProductoPrecioVenta,
-      imagen: p.ProductoImagen
-        ? `data:image/jpeg;base64,${p.ProductoImagen}`
-        : logo,
+      imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
       stock: p.ProductoStock,
       precioVentaActual: p.ProductoPrecioVenta,
     });
@@ -953,11 +914,7 @@ export default function Compras() {
                   }
                   precioMayorista={p.ProductoPrecioVentaMayorista}
                   clienteTipo="MI"
-                  imagen={
-                    p.ProductoImagen
-                      ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                      : logo
-                  }
+                  imagen={resolveProductoImagen(p.ProductoId, p.HasImagen)}
                   stock={p.ProductoStock}
                   onAdd={() =>
                     agregarProducto({
@@ -966,9 +923,7 @@ export default function Compras() {
                       precio: p.ProductoPrecioPromedio
                         ? Number(p.ProductoPrecioPromedio)
                         : p.ProductoPrecioVenta,
-                      imagen: p.ProductoImagen
-                        ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                        : logo,
+                      imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
                       stock: p.ProductoStock,
                       precioVentaActual: p.ProductoPrecioVenta,
                     })

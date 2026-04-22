@@ -69,7 +69,7 @@ export default function PerfilesList({
 
   useEffect(() => {
     if (isModalOpen) {
-      getMenus(1, 1000).then((res) => {
+      getMenus(1, 200).then((res) => {
         const menusFiltrados = (res.data || []).filter(
           (menu: { MenuId: number; MenuNombre: string }) => {
             const nombre = menu.MenuNombre.toUpperCase();

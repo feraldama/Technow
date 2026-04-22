@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { js2xml } from "xml-js";
+import { callGenexusSoap } from "../../services/genexus-soap.service";
 import Swal from "sweetalert2";
 import { getAllClientesSinPaginacion } from "../../services/clientes.service";
 import { formatCurrency, formatMiles } from "../../utils/utils";
@@ -24,13 +23,7 @@ interface VentaPendiente {
   Saldo: number;
 }
 
-interface Caja {
-  id: string | number;
-  CajaId: string | number;
-  CajaDescripcion: string;
-  CajaMonto: number;
-  [key: string]: unknown;
-}
+import type { Caja } from "../../types";
 
 const TIPOS_PAGO = [
   { value: "CO", label: "Contado" },
@@ -176,39 +169,21 @@ const CreditoPagosPage = () => {
     const añoStr = año < 10 ? `0${año}` : año.toString();
     const fechaFormateada = `${diaStr}/${mesStr}/${añoStr}`;
 
-    const json = {
-      Envelope: {
-        _attributes: { xmlns: "http://schemas.xmlsoap.org/soap/envelope/" },
-        Body: {
-          "PCreditoWS.VENTACONFIRMAR": {
-            _attributes: { xmlns: "TechNow" },
-            Tipo: "V",
-            Clienteid: Number(selectedCliente),
-            Montorecibido: montoPago,
-            Cajaid: cajaAperturada.CajaId,
-            Usuarioid: user?.id,
-            Fechastring: fechaFormateada,
-            Ventapagotipo: tipoPago,
-          },
-        },
-      },
-    };
-
-    const xml = js2xml(json, { compact: true, ignoreComment: true, spaces: 4 });
-    const config = {
-      headers: {
-        "Content-Type": "text/xml",
-      },
-    };
-
     try {
-      await axios.post(
-        `${import.meta.env.VITE_APP_URL}${
-          import.meta.env.VITE_APP_URL_GENEXUS
-        }apcreditows`,
-        xml,
-        config
-      );
+      await callGenexusSoap({
+        endpoint: "apcreditows",
+        operation: "PCreditoWS.VENTACONFIRMAR",
+        namespace: "TechNow",
+        payload: {
+          Tipo: "V",
+          Clienteid: Number(selectedCliente),
+          Montorecibido: montoPago,
+          Cajaid: cajaAperturada.CajaId,
+          Usuarioid: user?.id,
+          Fechastring: fechaFormateada,
+          Ventapagotipo: tipoPago,
+        },
+      });
 
       let timerInterval: ReturnType<typeof setInterval>;
       Swal.fire({

@@ -550,70 +550,48 @@ const Venta = {
 
         const ventasParams = esTodos ? [fechaDesde, fechaHasta] : [fechaDesde, fechaHasta, clienteId];
 
-        db.query(
-          ventasQuery,
-          ventasParams,
-          async (err, ventasResults) => {
-            if (err) return reject(err);
+        db.query(ventasQuery, ventasParams, (err, ventasResults) => {
+          if (err) return reject(err);
 
-            // Para cada venta, si es a crédito, obtener información de crédito y pagos
-            const ventasConDetalle = await Promise.all(
-              ventasResults.map(async (venta) => {
-                const ventaDetalle = {
-                  ...venta,
-                  SaldoPendiente: 0,
-                  Pagos: [],
-                };
+          // Sin ventas: devolver vacío sin más queries.
+          if (ventasResults.length === 0) {
+            return resolve({
+              cliente: {
+                ClienteId: cliente.ClienteId,
+                ClienteNombre: cliente.ClienteNombre,
+                ClienteApellido: cliente.ClienteApellido,
+                ClienteRUC: cliente.ClienteRUC,
+              },
+              fechaDesde,
+              fechaHasta,
+              ventas: ventasResults.map((v) => ({
+                ...v,
+                SaldoPendiente: 0,
+                Pagos: [],
+              })),
+            });
+          }
 
-                // Si es venta a crédito, obtener información de crédito
-                if (venta.VentaTipo === "CR") {
-                  // Calcular saldo pendiente
-                  const total = Number(venta.Total) || 0;
-                  const entrega = Number(venta.VentaEntrega) || 0;
-                  ventaDetalle.SaldoPendiente = total - entrega;
+          // IDs de ventas a crédito (único set que va a tener ventacredito).
+          const creditoVentaIds = ventasResults
+            .filter((v) => v.VentaTipo === "CR")
+            .map((v) => v.VentaId);
 
-                  // Obtener información de crédito
-                  const creditoQuery =
-                    "SELECT * FROM ventacredito WHERE VentaId = ?";
+          const finalize = (creditosByVentaId, pagosByCreditoId) => {
+            const ventasConDetalle = ventasResults.map((venta) => {
+              const base = { ...venta, SaldoPendiente: 0, Pagos: [] };
+              if (venta.VentaTipo !== "CR") return base;
 
-                  await new Promise((resolveCredito, rejectCredito) => {
-                    db.query(
-                      creditoQuery,
-                      [venta.VentaId],
-                      (err, creditoResults) => {
-                        if (err) return rejectCredito(err);
+              const total = Number(venta.Total) || 0;
+              const entrega = Number(venta.VentaEntrega) || 0;
+              base.SaldoPendiente = total - entrega;
 
-                        if (creditoResults.length > 0) {
-                          const ventaCreditoId =
-                            creditoResults[0].VentaCreditoId;
-
-                          // Obtener pagos del crédito
-                          const pagosQuery = `
-                        SELECT * FROM ventacreditopago 
-                        WHERE VentaCreditoId = ?
-                        ORDER BY VentaCreditoPagoFecha ASC, VentaCreditoPagoId ASC
-                      `;
-
-                          db.query(
-                            pagosQuery,
-                            [ventaCreditoId],
-                            (err, pagosResults) => {
-                              if (err) return rejectCredito(err);
-                              ventaDetalle.Pagos = pagosResults || [];
-                              resolveCredito();
-                            }
-                          );
-                        } else {
-                          resolveCredito();
-                        }
-                      }
-                    );
-                  });
-                }
-
-                return ventaDetalle;
-              })
-            );
+              const credito = creditosByVentaId.get(venta.VentaId);
+              if (credito) {
+                base.Pagos = pagosByCreditoId.get(credito.VentaCreditoId) || [];
+              }
+              return base;
+            });
 
             resolve({
               cliente: {
@@ -626,8 +604,51 @@ const Venta = {
               fechaHasta,
               ventas: ventasConDetalle,
             });
+          };
+
+          // Sin ventas a crédito: no hacen falta las otras 2 queries.
+          if (creditoVentaIds.length === 0) {
+            return finalize(new Map(), new Map());
           }
-        );
+
+          // Query #2: todos los ventacredito del set en una sola tirada.
+          db.query(
+            `SELECT * FROM ventacredito WHERE VentaId IN (?)`,
+            [creditoVentaIds],
+            (err, creditosResults) => {
+              if (err) return reject(err);
+
+              const creditosByVentaId = new Map(
+                creditosResults.map((c) => [c.VentaId, c])
+              );
+              const creditoIds = creditosResults.map((c) => c.VentaCreditoId);
+
+              if (creditoIds.length === 0) {
+                return finalize(creditosByVentaId, new Map());
+              }
+
+              // Query #3: todos los pagos del set, ordenados y agrupados en memoria.
+              db.query(
+                `SELECT * FROM ventacreditopago
+                 WHERE VentaCreditoId IN (?)
+                 ORDER BY VentaCreditoPagoFecha ASC, VentaCreditoPagoId ASC`,
+                [creditoIds],
+                (err, pagosResults) => {
+                  if (err) return reject(err);
+
+                  const pagosByCreditoId = new Map();
+                  for (const pago of pagosResults) {
+                    const arr = pagosByCreditoId.get(pago.VentaCreditoId);
+                    if (arr) arr.push(pago);
+                    else pagosByCreditoId.set(pago.VentaCreditoId, [pago]);
+                  }
+
+                  finalize(creditosByVentaId, pagosByCreditoId);
+                }
+              );
+            }
+          );
+        });
       };
 
       if (esTodos) {

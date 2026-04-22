@@ -1,4 +1,5 @@
 const Usuario = require("../models/usuario.model");
+const { sendError } = require("../utils/errors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const PerfilMenu = require("../models/perfilmenu.model");
@@ -44,7 +45,8 @@ exports.getAllUsuarios = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -97,7 +99,8 @@ exports.getUsuarioById = async (req, res) => {
     }
     res.json(usuario);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -150,9 +153,9 @@ exports.login = async (req, res) => {
       LocalId: usuario.LocalId,
     };
 
-    // Generar token
+    // Generar token. Duración configurable vía JWT_EXPIRES_IN (ej: "4h", "1d").
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     });
 
     // Obtener permisos del usuario
@@ -284,7 +287,6 @@ exports.createUsuario = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al crear usuario",
-      error: error.message,
     });
   }
 };
@@ -322,7 +324,6 @@ exports.updateUsuario = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al actualizar usuario",
-      error: error.message,
     });
   }
 };
@@ -373,6 +374,7 @@ exports.deleteUsuario = async (req, res) => {
       message: "Usuario eliminado exitosamente",
     });
   } catch (error) {
+    console.error(error);
     if (
       error &&
       error.message &&
@@ -412,7 +414,6 @@ exports.deleteUsuario = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al eliminar usuario",
-      error: error.message,
     });
   }
 };

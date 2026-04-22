@@ -16,15 +16,7 @@ import {
   PermissionDenied,
 } from "../../components/common/ui";
 
-interface Local {
-  id: string | number;
-  LocalId: string | number;
-  LocalNombre: string;
-  LocalTelefono?: string;
-  LocalCelular?: string;
-  LocalDireccion?: string;
-  [key: string]: unknown;
-}
+import type { Local } from "../../types";
 
 interface Pagination {
   totalItems: number;

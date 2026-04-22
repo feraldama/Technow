@@ -9,17 +9,15 @@ import ProductCard from "../../components/products/ProductCard";
 import { useAuth } from "../../contexts/useAuth";
 import PaymentModal from "../../components/common/PaymentModal";
 import Swal from "sweetalert2";
-import axios from "axios";
-import { js2xml } from "xml-js";
-import logo from "../../assets/img/logo.jpg";
+import { callGenexusSoap } from "../../services/genexus-soap.service";
+import { resolveProductoImagen } from "../../utils/productImage";
 import {
   getAllClientesSinPaginacion,
   createCliente,
 } from "../../services/clientes.service";
 import ClienteModal from "../../components/common/ClienteModal";
 import type { Cliente } from "../../components/common/ClienteFormModal";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { loadPdf } from "../../utils/lazyPdf";
 import { getEstadoAperturaPorUsuario } from "../../services/registrodiariocaja.service";
 import { getCajaById } from "../../services/cajas.service";
 import { getLocalById } from "../../services/locales.service";
@@ -35,13 +33,7 @@ import {
   type CarritoItem,
 } from "../../utils/utils";
 
-interface Caja {
-  id: string | number;
-  CajaId: string | number;
-  CajaDescripcion: string;
-  CajaMonto: number;
-  [key: string]: unknown;
-}
+import type { Caja } from "../../types";
 
 interface Combo {
   ComboId: number;
@@ -78,7 +70,7 @@ export default function Sales() {
       ProductoNombre: string;
       ProductoPrecioVenta: number;
       ProductoStock: number;
-      ProductoImagen?: string;
+      HasImagen?: number | boolean;
       ProductoPrecioVentaMayorista: number;
       LocalId: string | number;
       ProductoPrecioUnitario: number;
@@ -88,6 +80,7 @@ export default function Sales() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [pagination, setPagination] = useState({
     totalItems: 0,
     totalPages: 1,
@@ -291,11 +284,12 @@ export default function Sales() {
     currentPage,
     itemsPerPage,
     user?.LocalId,
+    refreshKey,
   ]);
 
   // Cargar combos solo una vez al montar
   useEffect(() => {
-    getCombos(1, 1000).then((data) => setCombos(data.data || []));
+    getCombos(1, 200).then((data) => setCombos(data.data || []));
   }, []);
 
   // Cargar productos cuando cambian las dependencias
@@ -458,8 +452,11 @@ export default function Sales() {
 
   const sendRequest = async () => {
     const fecha = new Date();
-    // Restar 3h (Paraguay UTC-3): Genexus/MySQL suman 3 al guardar, así queda la hora local correcta
-    const fechaAjustada = new Date(fecha.getTime() - 3 * 60 * 60 * 1000);
+    // Paraguay quedó fijo en UTC-4 tras abolir el horario de verano, pero el
+    // JVM/tzdata de Tomcat aún piensa Paraguay = UTC-3, por lo que suma 4h
+    // al guardar. Compensamos restando 4h desde el front. Ideal sería corregir
+    // el backend con `-Duser.timezone=Etc/GMT+4`; mientras tanto, este parche.
+    const fechaAjustada = new Date(fecha.getTime() - 4 * 60 * 60 * 1000);
     const dia = fechaAjustada.getDate();
     const mes = fechaAjustada.getMonth() + 1;
     const año = fechaAjustada.getFullYear() % 100;
@@ -504,75 +501,58 @@ export default function Sales() {
       : "PVentaConfirmarWS.VENTACONFIRMAR";
     const namespace = isDevolucionMode ? "Tech" : "TechNow";
 
-    const json = {
-      Envelope: {
-        _attributes: { xmlns: "http://schemas.xmlsoap.org/soap/envelope/" },
-        Body: {
-          [operationName]: {
-            _attributes: { xmlns: namespace },
-            Sdtproducto: {
-              SDTProductoItem: SDTProductoItem,
-            },
-            ...(isDevolucionMode
-              ? {
-                  Ventafechastring: fechaFormateada,
-                  Almacenorigenid: user?.LocalId,
-                  Clientetipo: clienteSeleccionado?.ClienteTipo,
-                  Cajaid: cajaAperturada?.CajaId,
-                  Usuarioid: user?.id,
-                  Efectivo: efectivo,
-                  Total2: getSubtotal(cartItems),
-                  Ventatipo: "CO",
-                  Clienteid: clienteSeleccionado?.ClienteId,
-                  Voucherreact: voucher,
-                  Transferreact: Number(banco),
-                  Ventanrofactura: 0,
-                  Ventatimbrado: 0,
-                }
-              : {
-                  Ventafechastring: fechaFormateada,
-                  Almacenorigenid: user?.LocalId,
-                  Clientetipo: clienteSeleccionado?.ClienteTipo,
-                  Cajaid: cajaAperturada?.CajaId,
-                  Usuarioid: user?.id,
-                  Efectivo: efectivo,
-                  Total2: getSubtotal(cartItems),
-                  Ventatipo: "CO",
-                  Pagotipo: "E",
-                  Clienteid: clienteSeleccionado?.ClienteId,
-                  Efectivoreact: Number(efectivo) + Number(totalRest),
-                  Bancoreact: Number(bancoDebito) + Number(bancoCredito),
-                  Clientecuentareact: cuentaCliente,
-                  Voucherreact: voucher,
-                  Transferreact: Number(banco),
-                  Ventanrofactura: 0,
-                  Ventatimbrado: 0,
-                  Ventanropos:
-                    bancoDebito > 0 || bancoCredito > 0
-                      ? ventaNroPOS.trim() || "0"
-                      : "0",
-                }),
-          },
-        },
-      },
+    const payload: Record<string, unknown> = {
+      Sdtproducto: { SDTProductoItem: SDTProductoItem },
+      ...(isDevolucionMode
+        ? {
+            Ventafechastring: fechaFormateada,
+            Almacenorigenid: user?.LocalId,
+            Clientetipo: clienteSeleccionado?.ClienteTipo,
+            Cajaid: cajaAperturada?.CajaId,
+            Usuarioid: user?.id,
+            Efectivo: efectivo,
+            Total2: getSubtotal(cartItems),
+            Ventatipo: "CO",
+            Clienteid: clienteSeleccionado?.ClienteId,
+            Voucherreact: voucher,
+            Transferreact: Number(banco),
+            Ventanrofactura: 0,
+            Ventatimbrado: 0,
+          }
+        : {
+            Ventafechastring: fechaFormateada,
+            Almacenorigenid: user?.LocalId,
+            Clientetipo: clienteSeleccionado?.ClienteTipo,
+            Cajaid: cajaAperturada?.CajaId,
+            Usuarioid: user?.id,
+            Efectivo: efectivo,
+            Total2: getSubtotal(cartItems),
+            Ventatipo: "CO",
+            Pagotipo: "E",
+            Clienteid: clienteSeleccionado?.ClienteId,
+            Efectivoreact: Number(efectivo) + Number(totalRest),
+            Bancoreact: Number(bancoDebito) + Number(bancoCredito),
+            Clientecuentareact: cuentaCliente,
+            Voucherreact: voucher,
+            Transferreact: Number(banco),
+            Ventanrofactura: 0,
+            Ventatimbrado: 0,
+            Ventanropos:
+              bancoDebito > 0 || bancoCredito > 0
+                ? ventaNroPOS.trim() || "0"
+                : "0",
+          }),
     };
 
-    const xml = js2xml(json, { compact: true, ignoreComment: true, spaces: 4 });
-    const config = {
-      headers: {
-        "Content-Type": "text/xml",
-      },
-    };
     try {
-      await axios.post(
-        import.meta.env.VITE_APP_URL +
-          import.meta.env.VITE_APP_URL_GENEXUS +
-          endpoint,
-        xml,
-        config,
-      );
+      await callGenexusSoap({
+        endpoint,
+        operation: operationName,
+        namespace,
+        payload,
+      });
       if (printTicket) {
-        generateTicketPDF();
+        await generateTicketPDF();
       }
 
       const successMessage = isDevolucionMode
@@ -603,7 +583,7 @@ export default function Sales() {
           ClienteApellido: "",
           ClienteDireccion: "",
         });
-        fetchProductos();
+        setRefreshKey((k) => k + 1);
         searchInputRef.current?.focus();
       });
     } catch (error) {
@@ -630,7 +610,8 @@ export default function Sales() {
     setIsDevolucion(false); // Resetear el checkbox de devolución
   };
 
-  const generateTicketPDF = () => {
+  const generateTicketPDF = async () => {
+    const { jsPDF, autoTable } = await loadPdf();
     // Crear una instancia de jsPDF con un tamaño personalizado (80mm de ancho)
     const doc = new jsPDF({
       orientation: "portrait",
@@ -888,9 +869,7 @@ export default function Sales() {
       nombre: p.ProductoNombre,
       precio: p.ProductoPrecioVenta,
       precioMayorista: p.ProductoPrecioVentaMayorista,
-      imagen: p.ProductoImagen
-        ? `data:image/jpeg;base64,${p.ProductoImagen}`
-        : logo,
+      imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
       stock: p.ProductoStock,
       precioUnitario: p.ProductoPrecioUnitario,
     });
@@ -1212,11 +1191,7 @@ export default function Sales() {
                     precio={p.ProductoPrecioVenta}
                     precioMayorista={p.ProductoPrecioVentaMayorista}
                     clienteTipo={clienteSeleccionado?.ClienteTipo || "MI"}
-                    imagen={
-                      p.ProductoImagen
-                        ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                        : logo
-                    }
+                    imagen={resolveProductoImagen(p.ProductoId, p.HasImagen)}
                     stock={p.ProductoStock}
                     onAdd={() =>
                       agregarProducto({
@@ -1224,9 +1199,7 @@ export default function Sales() {
                         nombre: p.ProductoNombre,
                         precio: p.ProductoPrecioVenta,
                         precioMayorista: p.ProductoPrecioVentaMayorista,
-                        imagen: p.ProductoImagen
-                          ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                          : logo,
+                        imagen: resolveProductoImagen(p.ProductoId, p.HasImagen),
                         stock: p.ProductoStock,
                         precioUnitario: p.ProductoPrecioUnitario,
                       })

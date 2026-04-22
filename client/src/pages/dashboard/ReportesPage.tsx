@@ -1,8 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { usePermiso } from "../../hooks/usePermiso";
 import { PermissionDenied } from "../../components/common/ui";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { loadPdf } from "../../utils/lazyPdf";
 import api from "../../services/api";
 import { formatMiles } from "../../utils/utils";
 import { getAllClientesSinPaginacion } from "../../services/clientes.service";
@@ -371,6 +370,7 @@ const ReportesPage: React.FC = () => {
     try {
       const res = await api.get("/venta/pendientes");
       const deudas: DeudaCliente[] = res.data.data || [];
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF();
       doc.setFontSize(18);
       doc.text("Créditos Pendientes a Cobrar", 14, 18);
@@ -435,6 +435,7 @@ const ReportesPage: React.FC = () => {
       const reporte: ReporteData = res.data.data;
       const esTodos = clienteSeleccionado.toUpperCase() === "TODOS";
 
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF({ orientation: esTodos ? "landscape" : "portrait" });
       let y = 20;
 
@@ -660,6 +661,7 @@ const ReportesPage: React.FC = () => {
         0,
       );
 
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 18;
 
@@ -820,6 +822,7 @@ const ReportesPage: React.FC = () => {
       );
       const productos: ProductoMovimientoRow[] = data?.productos ?? [];
 
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 18;
 
@@ -1025,6 +1028,7 @@ const ReportesPage: React.FC = () => {
       const data = await getReporteMasVendidos(fechaDesdeTop, fechaHastaTop);
       const productos: ProductoMasVendidoRow[] = data?.productos ?? [];
 
+      const { jsPDF, autoTable } = await loadPdf();
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 18;
 
@@ -1199,8 +1203,9 @@ const ReportesPage: React.FC = () => {
     }
   };
 
-  const exportarCierrePDF = () => {
+  const exportarCierrePDF = async () => {
     if (resumenesCierre.length === 0) return;
+    const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ orientation: "landscape", format: "a4" });
     doc.setFontSize(14);
     doc.text(

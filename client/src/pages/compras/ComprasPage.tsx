@@ -24,8 +24,7 @@ import {
 } from "../../components/common/ui";
 import { formatCurrency } from "../../utils/utils";
 import Swal from "sweetalert2";
-import axios from "axios";
-import { js2xml } from "xml-js";
+import { callGenexusSoap } from "../../services/genexus-soap.service";
 
 interface Pagination {
   totalItems: number;
@@ -164,7 +163,7 @@ export default function ComprasPage() {
     const loadFilterOptions = async () => {
       try {
         const [almacenesRes, proveedoresRes] = await Promise.all([
-          getAlmacenes(1, 1000),
+          getAlmacenes(1, 200),
           getAllProveedoresSinPaginacion(),
         ]);
         setAlmacenes(almacenesRes?.data || []);
@@ -337,42 +336,17 @@ export default function ComprasPage() {
           const añoStr = año < 10 ? `0${año}` : año.toString();
           const fechaFormateada = `${diaStr}/${mesStr}/${añoStr}`;
 
-          // Preparar datos para el webservice
-          const json = {
-            Envelope: {
-              _attributes: {
-                xmlns: "http://schemas.xmlsoap.org/soap/envelope/",
-              },
-              Body: {
-                "PBorrarRegistoDiarioWS.VENTACONFIRMAR": {
-                  _attributes: { xmlns: "TechNow" },
-                  Ventaid: compra.CompraId,
-                  Fechastring: fechaFormateada,
-                  Regla: 2, // Valor por defecto para Regla
-                },
-              },
+          // PRIMERO: Llamar al webservice GeneXus
+          await callGenexusSoap({
+            endpoint: "apborrarregistodiariows",
+            operation: "PBorrarRegistoDiarioWS.VENTACONFIRMAR",
+            namespace: "TechNow",
+            payload: {
+              Ventaid: compra.CompraId,
+              Fechastring: fechaFormateada,
+              Regla: 2,
             },
-          };
-
-          const xml = js2xml(json, {
-            compact: true,
-            ignoreComment: true,
-            spaces: 4,
           });
-          const config = {
-            headers: {
-              "Content-Type": "text/xml",
-            },
-          };
-
-          // PRIMERO: Llamar al webservice
-          await axios.post(
-            `${import.meta.env.VITE_APP_URL}${
-              import.meta.env.VITE_APP_URL_GENEXUS
-            }apborrarregistodiariows`,
-            xml,
-            config
-          );
 
           // SEGUNDO: Solo si el webservice fue exitoso, eliminar la compra
           await deleteCompra(compra.CompraId);

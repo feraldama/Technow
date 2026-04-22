@@ -16,13 +16,7 @@ import {
   PermissionDenied,
 } from "../../components/common/ui";
 
-interface Caja {
-  id: string | number;
-  CajaId: string | number;
-  CajaDescripcion: string;
-  CajaMonto: number;
-  [key: string]: unknown;
-}
+import type { Caja } from "../../types";
 
 interface Pagination {
   totalItems: number;

@@ -53,8 +53,7 @@ export interface ClientePresupuesto {
   ClienteApellido: string;
 }
 
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { loadPdf } from "./lazyPdf";
 
 import Swal from "sweetalert2";
 
@@ -83,6 +82,7 @@ export const generatePresupuestoPDF = async (
     return;
   }
 
+  const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF();
   const clienteNombre = cliente
     ? `${cliente.ClienteNombre} ${cliente.ClienteApellido}`.trim()

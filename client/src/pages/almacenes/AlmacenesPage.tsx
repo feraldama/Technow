@@ -16,12 +16,7 @@ import {
   PermissionDenied,
 } from "../../components/common/ui";
 
-interface Almacen {
-  id: string | number;
-  AlmacenId: string | number;
-  AlmacenNombre: string;
-  [key: string]: unknown;
-}
+import type { Almacen } from "../../types";
 
 interface Pagination {
   totalItems: number;

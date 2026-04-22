@@ -1,4 +1,5 @@
 const RegistroDiarioCaja = require("../models/registrodiariocaja.model");
+const { sendError } = require("../utils/errors");
 const db = require("../config/db");
 
 function extractRegistroFilters(query) {
@@ -35,7 +36,7 @@ exports.getAll = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Error al obtener registros:", error);
-    res.status(500).json({ message: error.message });
+    sendError(res, error, 500);
   }
 };
 
@@ -109,7 +110,7 @@ exports.getByDateRange = async (req, res) => {
     res.json({ data });
   } catch (error) {
     console.error("Error al obtener registros por rango:", error);
-    res.status(500).json({ message: error.message });
+    sendError(res, error, 500);
   }
 };
 
@@ -122,7 +123,8 @@ exports.getById = async (req, res) => {
     }
     res.json(registro);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -138,7 +140,8 @@ exports.create = async (req, res) => {
       data: registro,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -154,7 +157,8 @@ exports.update = async (req, res) => {
       data: registro,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -167,6 +171,7 @@ exports.delete = async (req, res) => {
     }
     res.json({ message: "Registro eliminado exitosamente" });
   } catch (error) {
+    console.error(error);
     if (
       error &&
       error.message &&
@@ -177,7 +182,7 @@ exports.delete = async (req, res) => {
           "No se puede eliminar el registro porque tiene movimientos asociados.",
       });
     }
-    res.status(500).json({ message: error.message });
+    sendError(res, error, 500);
   }
 };
 
@@ -298,7 +303,6 @@ exports.aperturaCierreCaja = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error en el servidor",
-      error: error.message,
     });
   }
 };
@@ -315,6 +319,7 @@ exports.estadoAperturaPorUsuario = async (req, res) => {
     );
     res.json(estado);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };

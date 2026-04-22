@@ -1,6 +1,23 @@
 const db = require("../config/db");
 
 /**
+ * Columnas "livianas" de producto para listados/búsqueda: omite el BLOB
+ * `ProductoImagen` (que se sirve via endpoint binario dedicado) y agrega
+ * `HasImagen` como booleano para que el cliente sepa si pedir la URL o
+ * mostrar el logo por defecto.
+ */
+const PRODUCTO_LIST_COLS = `
+  p.ProductoId, p.ProductoCodigo, p.ProductoNombre,
+  p.ProductoPrecioVenta, p.ProductoPrecioVentaMayorista,
+  p.ProductoPrecioUnitario, p.ProductoPrecioPromedio,
+  p.ProductoStock, p.ProductoStockUnitario,
+  p.ProductoCantidadCaja, p.ProductoIVA,
+  p.ProductoStockMinimo, p.ProductoImagen_GXI,
+  p.LocalId,
+  (LENGTH(p.ProductoImagen) > 0) AS HasImagen
+`;
+
+/**
  * Construye la cláusula WHERE para filtros de productos.
  * - localId (Local FK)
  * - stockMin / stockMax: rango sobre ProductoStock
@@ -116,7 +133,7 @@ const Producto = {
         : "";
 
       const queryPaginated = `
-        SELECT p.*, l.LocalNombre
+        SELECT ${PRODUCTO_LIST_COLS}, l.LocalNombre
         FROM producto p
         LEFT JOIN local l ON p.LocalId = l.LocalId
         ${whereSql}
@@ -195,7 +212,7 @@ const Producto = {
         : "";
 
       const searchQuery = `
-        SELECT p.*, l.LocalNombre
+        SELECT ${PRODUCTO_LIST_COLS}, l.LocalNombre
         FROM producto p
         LEFT JOIN local l ON p.LocalId = l.LocalId
         WHERE (p.ProductoNombre LIKE ?
@@ -678,6 +695,23 @@ const Producto = {
         const productos = Object.values(byProduct);
         resolve({ productos });
       });
+    });
+  },
+
+  /**
+   * Devuelve el binario de la imagen (LONGBLOB) del producto, o null si no
+   * tiene. Usado por el endpoint público GET /productos/:id/imagen.
+   */
+  getImagen: (id) => {
+    return new Promise((resolve, reject) => {
+      db.query(
+        "SELECT ProductoImagen FROM producto WHERE ProductoId = ?",
+        [id],
+        (err, results) => {
+          if (err) return reject(err);
+          resolve(results[0]?.ProductoImagen || null);
+        }
+      );
     });
   },
 };

@@ -10,15 +10,10 @@ import { useAuth } from "../../contexts/useAuth";
 import Swal from "sweetalert2";
 import { formatMiles } from "../../utils/utils";
 import { useNavigate, useLocation } from "react-router-dom";
-import jsPDF from "jspdf";
+import { loadPdf } from "../../utils/lazyPdf";
 import { getRegistrosDiariosCaja } from "../../services/registros.service";
 
-interface Caja {
-  id: string | number;
-  CajaId: string | number;
-  CajaDescripcion: string;
-  CajaMonto: number;
-}
+import type { Caja } from "../../types";
 
 interface RegistroDiarioCaja {
   RegistroDiarioCajaId: number;
@@ -260,6 +255,7 @@ export default function AperturaCierreCajaPage() {
       txtSobranteFaltante = `Sobrante/Faltante: Gs. 0`;
     }
     // --- Generar PDF ---
+    const { jsPDF } = await loadPdf();
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",

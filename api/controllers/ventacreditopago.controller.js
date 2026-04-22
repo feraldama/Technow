@@ -1,11 +1,13 @@
 const VentaCreditoPago = require("../models/ventacreditopago.model");
+const { sendError } = require("../utils/errors");
 
 exports.getAll = async (req, res) => {
   try {
     const pagos = await VentaCreditoPago.getAll();
     res.json(pagos);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -34,7 +36,8 @@ exports.getAllPaginated = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -49,7 +52,8 @@ exports.getById = async (req, res) => {
     }
     res.json(pago);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -60,7 +64,8 @@ exports.getByVentaCreditoId = async (req, res) => {
     );
     res.json(pagos);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -72,7 +77,8 @@ exports.create = async (req, res) => {
       data: pago,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -91,7 +97,8 @@ exports.update = async (req, res) => {
       data: pago,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -106,7 +113,8 @@ exports.delete = async (req, res) => {
     }
     res.json({ message: "Pago eliminado exitosamente" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -143,6 +151,7 @@ exports.searchPagos = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Error al buscar pagos" });
   }
 };

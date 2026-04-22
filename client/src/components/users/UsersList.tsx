@@ -15,18 +15,7 @@ import { getPerfilesByUsuario } from "../../services/usuarioperfil.service";
 import type { UsuarioFilters } from "../../services/usuarios.service";
 import { formatMiles } from "../../utils/utils";
 
-interface Usuario {
-  id: string | number;
-  UsuarioId: string;
-  UsuarioNombre: string;
-  UsuarioApellido: string;
-  UsuarioCorreo: string;
-  UsuarioIsAdmin: "S" | "N";
-  UsuarioEstado: "A" | "I";
-  LocalId: number;
-  LocalNombre?: string;
-  [key: string]: unknown;
-}
+import type { Usuario } from "../../types";
 
 interface Pagination {
   totalItems: number;
@@ -157,14 +146,14 @@ export default function UsuariosList({
         LocalId: 1,
       });
     }
-    getLocales(1, 1000).then((res) => {
+    getLocales(1, 200).then((res) => {
       setLocales(res.data || []);
     });
   }, [currentUser, setEditingPassword]);
 
   useEffect(() => {
     if (isModalOpen) {
-      getPerfiles(1, 1000).then((res) => setPerfiles(res.data || []));
+      getPerfiles(1, 200).then((res) => setPerfiles(res.data || []));
       if (currentUser) {
         getPerfilesByUsuario(currentUser.UsuarioId).then((res) => {
           const perfilesArray = Array.isArray(res) ? res : res.data;

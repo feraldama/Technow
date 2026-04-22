@@ -1,11 +1,13 @@
 const Venta = require("../models/venta.model");
+const { sendError } = require("../utils/errors");
 
 exports.getAll = async (req, res) => {
   try {
     const ventas = await Venta.getAll();
     res.json(ventas);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -49,7 +51,8 @@ exports.getAllPaginated = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -61,7 +64,8 @@ exports.getById = async (req, res) => {
     }
     res.json(venta);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -73,7 +77,8 @@ exports.create = async (req, res) => {
       data: venta,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -88,7 +93,8 @@ exports.update = async (req, res) => {
       data: venta,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(error);
+    sendError(res, error, 400);
   }
 };
 
@@ -100,6 +106,7 @@ exports.delete = async (req, res) => {
     }
     res.json({ message: "Venta eliminada exitosamente" });
   } catch (error) {
+    console.error(error);
     if (
       error &&
       error.message &&
@@ -110,7 +117,7 @@ exports.delete = async (req, res) => {
           "No se puede eliminar la venta porque tiene registros asociados.",
       });
     }
-    res.status(500).json({ message: error.message });
+    sendError(res, error, 500);
   }
 };
 
@@ -150,6 +157,7 @@ exports.searchVentas = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Error al buscar ventas" });
   }
 };
@@ -180,7 +188,6 @@ exports.getVentasPendientesPorCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al obtener ventas pendientes",
-      error: error.message,
     });
   }
 };
@@ -195,7 +202,6 @@ exports.getDeudasPendientesPorCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al obtener deudas pendientes por cliente",
-      error: error.message,
     });
   }
 };
@@ -237,7 +243,6 @@ exports.getReporteVentasPorCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al obtener reporte de ventas",
-      error: error.message,
     });
   }
 };

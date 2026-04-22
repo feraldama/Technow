@@ -23,18 +23,7 @@ import {
   deleteUsuarioPerfil,
 } from "../../services/usuarioperfil.service";
 
-// Tipos auxiliares
-interface Usuario {
-  id: string | number;
-  UsuarioId: string;
-  UsuarioNombre: string;
-  UsuarioApellido: string;
-  UsuarioCorreo: string;
-  UsuarioIsAdmin: "S" | "N";
-  UsuarioEstado: "A" | "I";
-  LocalId: number;
-  [key: string]: unknown;
-}
+import type { Usuario } from "../../types";
 
 interface Pagination {
   totalItems: number;
@@ -121,7 +110,7 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     // Cargar locales para el dropdown del filtro.
-    getLocales(1, 1000)
+    getLocales(1, 200)
       .then((res) => setLocales(res.data || []))
       .catch((err) => console.error("Error al cargar locales:", err));
   }, []);

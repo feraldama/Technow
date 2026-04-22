@@ -1,4 +1,5 @@
 const Cliente = require("../models/cliente.model");
+const { sendError } = require("../utils/errors");
 
 function extractClienteFilters(query) {
   const allowedTipos = ["MI", "MA"];
@@ -35,7 +36,8 @@ exports.getAllClientes = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -88,7 +90,8 @@ exports.getClienteById = async (req, res) => {
     }
     res.json(cliente);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -121,7 +124,6 @@ exports.createCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al crear cliente",
-      error: error.message,
     });
   }
 };
@@ -153,7 +155,6 @@ exports.updateCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al actualizar cliente",
-      error: error.message,
     });
   }
 };
@@ -173,6 +174,7 @@ exports.deleteCliente = async (req, res) => {
       message: "Cliente eliminado exitosamente",
     });
   } catch (error) {
+    console.error(error);
     if (
       error &&
       error.message &&
@@ -187,7 +189,6 @@ exports.deleteCliente = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error al eliminar cliente",
-      error: error.message,
     });
   }
 };
@@ -198,6 +199,7 @@ exports.getAllClientesSinPaginacion = async (req, res) => {
     const clientes = await Cliente.getAll();
     res.json({ data: clientes });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };

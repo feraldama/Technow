@@ -5,12 +5,7 @@ import DataTable from "../common/Table/DataTable";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { formatMiles } from "../../utils/utils";
 
-interface Almacen {
-  id: string | number;
-  AlmacenId: string | number;
-  AlmacenNombre: string;
-  [key: string]: unknown;
-}
+import type { Almacen } from "../../types";
 
 interface Pagination {
   totalItems: number;

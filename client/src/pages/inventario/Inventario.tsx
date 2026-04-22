@@ -10,7 +10,7 @@ import { getAlmacenes } from "../../services/almacenes.service";
 import ProductCard from "../../components/products/ProductCard";
 import { useAuth } from "../../contexts/useAuth";
 import Swal from "sweetalert2";
-import logo from "../../assets/img/logo.jpg";
+import { resolveProductoImagen } from "../../utils/productImage";
 import { useNavigate } from "react-router-dom";
 import ActionButton from "../../components/common/Button/ActionButton";
 import { getLocalById } from "../../services/locales.service";
@@ -48,7 +48,7 @@ export default function Inventario() {
       ProductoPrecioVenta: number;
       ProductoPrecioPromedio?: string;
       ProductoStock: number;
-      ProductoImagen?: string;
+      HasImagen?: number | boolean;
       ProductoPrecioVentaMayorista: number;
       LocalId: string | number;
       ProductoPrecioUnitario: number;
@@ -70,7 +70,7 @@ export default function Inventario() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getAlmacenes(1, 500).then((res) => {
+    getAlmacenes(1, 200).then((res) => {
       const list = (res.data ?? []).filter(
         (a: { AlmacenId: number }) => a.AlmacenId !== 0
       );
@@ -322,9 +322,10 @@ export default function Inventario() {
       agregarProducto({
         id: primerProducto.ProductoId,
         nombre: primerProducto.ProductoNombre,
-        imagen: primerProducto.ProductoImagen
-          ? `data:image/jpeg;base64,${primerProducto.ProductoImagen}`
-          : logo,
+        imagen: resolveProductoImagen(
+          primerProducto.ProductoId,
+          primerProducto.HasImagen
+        ),
         stock: primerProducto.ProductoStock,
       });
       setBusqueda("");
@@ -583,20 +584,17 @@ export default function Inventario() {
                     }
                     precioMayorista={p.ProductoPrecioVentaMayorista}
                     clienteTipo="MI"
-                    imagen={
-                      p.ProductoImagen
-                        ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                        : logo
-                    }
+                    imagen={resolveProductoImagen(p.ProductoId, p.HasImagen)}
                     stock={p.ProductoStock}
                     onAdd={() => {
                       if (puedeCrear) {
                         agregarProducto({
                           id: p.ProductoId,
                           nombre: p.ProductoNombre,
-                          imagen: p.ProductoImagen
-                            ? `data:image/jpeg;base64,${p.ProductoImagen}`
-                            : logo,
+                          imagen: resolveProductoImagen(
+                            p.ProductoId,
+                            p.HasImagen
+                          ),
                           stock: p.ProductoStock,
                         });
                       } else {

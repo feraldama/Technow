@@ -1,4 +1,5 @@
 const Producto = require("../models/producto.model");
+const { sendError } = require("../utils/errors");
 
 function extractProductoFilters(query) {
   const filters = {};
@@ -44,7 +45,8 @@ exports.getAllProductos = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -82,7 +84,8 @@ exports.searchProductos = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -96,7 +99,8 @@ exports.getProductoById = async (req, res) => {
     convertirImagenes(producto);
     res.json(producto);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -130,10 +134,10 @@ exports.createProducto = async (req, res) => {
       message: "Producto creado exitosamente",
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Error al crear producto",
-      error: error.message,
     });
   }
 };
@@ -162,10 +166,10 @@ exports.updateProducto = async (req, res) => {
       message: "Producto actualizado exitosamente",
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Error al actualizar producto",
-      error: error.message,
     });
   }
 };
@@ -186,10 +190,10 @@ exports.deleteProducto = async (req, res) => {
       message: "Producto eliminado exitosamente",
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Error al eliminar producto",
-      error: error.message,
     });
   }
 };
@@ -220,7 +224,8 @@ exports.getReporteMovimientos = async (req, res) => {
     );
     res.json({ data: { productos, fechaDesde, fechaHasta } });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -250,7 +255,8 @@ exports.getReporteMasVendidos = async (req, res) => {
     );
     res.json({ data: { productos, fechaDesde, fechaHasta } });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -260,7 +266,8 @@ exports.getReporteStock = async (req, res) => {
     const { productos } = await Producto.getReporteStock();
     res.json({ data: { productos } });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 
@@ -271,7 +278,28 @@ exports.getAllProductosSinPaginacion = async (req, res) => {
     convertirImagenes(productos);
     res.json({ data: productos });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    sendError(res, error, 500);
+  }
+};
+
+/**
+ * GET /productos/:id/imagen
+ * Sirve el BLOB como binario. Público (sin auth) para que los tags <img>
+ * lo puedan cargar directamente. Con cache agresivo del navegador.
+ */
+exports.getImagen = async (req, res) => {
+  try {
+    const imagen = await Producto.getImagen(req.params.id);
+    // `imagen` puede ser null, undefined, o un Buffer de 0 bytes (algunos
+    // productos tienen el BLOB vacío en vez de NULL).
+    if (!imagen || imagen.length === 0) return res.status(404).end();
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    res.send(imagen);
+  } catch (error) {
+    console.error(error);
+    sendError(res, error, 500);
   }
 };
 

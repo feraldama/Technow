@@ -170,7 +170,7 @@ export default function ProductsList({
   const [precioCostoFocused, setPrecioCostoFocused] = useState(false);
 
   useEffect(() => {
-    getAlmacenes(1, 500).then((res) => {
+    getAlmacenes(1, 200).then((res) => {
       setAlmacenes(res.data ?? []);
     });
   }, []);
@@ -234,7 +234,7 @@ export default function ProductsList({
       });
     }
     setPrecioCostoFocused(false); // Resetear el estado de foco cuando cambia el producto
-    getLocales(1, 1000).then((res) => {
+    getLocales(1, 200).then((res) => {
       setLocales(res.data || []);
     });
   }, [currentProduct]);

@@ -124,7 +124,7 @@ export default function MovementsPage() {
     const loadFilterOptions = async () => {
       try {
         const [cajasRes, tiposRes] = await Promise.all([
-          getCajas(1, 1000),
+          getCajas(1, 200),
           getTiposGasto(),
         ]);
         setCajas(cajasRes?.data || []);
