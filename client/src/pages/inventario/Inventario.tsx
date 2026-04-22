@@ -386,6 +386,12 @@ export default function Inventario() {
       debounceTimeoutRef.current = null;
     }
 
+    const esCodigo = /^\d+$/.test(busqueda.trim());
+    if (!esCodigo) {
+      setBusquedaDebounced(busqueda);
+      return;
+    }
+
     if (busqueda === busquedaDebounced && !loading) {
       agregarPrimerProductoVisible();
       setBusqueda("");
