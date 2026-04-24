@@ -508,7 +508,7 @@ export default function Inventario() {
                             <input
                               type="number"
                               min={0}
-                              value={pa.ProductoAlmacenStock}
+                              value={pa.ProductoAlmacenStock || ""}
                               onChange={(e) =>
                                 updateStockAlmacen(
                                   p.cartItemId,
@@ -529,7 +529,7 @@ export default function Inventario() {
                                 0,
                                 (p.ProductoCantidadCaja || 1) - 1
                               )}
-                              value={pa.ProductoAlmacenStockUnitario}
+                              value={pa.ProductoAlmacenStockUnitario || ""}
                               onChange={(e) => {
                                 const raw = Number(e.target.value) || 0;
                                 const maxU = Math.max(
