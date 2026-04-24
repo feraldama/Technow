@@ -711,7 +711,11 @@ export default function ProductsList({
                       type="text"
                       name="ProductoPrecioVenta"
                       id="ProductoPrecioVenta"
-                      value={formatMiles(formData.ProductoPrecioVenta)}
+                      value={
+                        formData.ProductoPrecioVenta
+                          ? formatMiles(formData.ProductoPrecioVenta)
+                          : ""
+                      }
                       onChange={(e) => {
                         // Eliminar puntos y formatear a número
                         const raw = e.target.value.replace(/\./g, "");
@@ -736,9 +740,11 @@ export default function ProductsList({
                       type="text"
                       name="ProductoPrecioVentaMayorista"
                       id="ProductoPrecioVentaMayorista"
-                      value={formatMiles(
-                        formData.ProductoPrecioVentaMayorista || 0
-                      )}
+                      value={
+                        formData.ProductoPrecioVentaMayorista
+                          ? formatMiles(formData.ProductoPrecioVentaMayorista)
+                          : ""
+                      }
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\./g, "");
                         setFormData((prev) => ({
@@ -760,7 +766,7 @@ export default function ProductsList({
                       type="number"
                       name="ProductoPrecioUnitario"
                       id="ProductoPrecioUnitario"
-                      value={formData.ProductoPrecioUnitario}
+                      value={formData.ProductoPrecioUnitario || ""}
                       onChange={handleInputChange}
                       className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     />
@@ -778,10 +784,14 @@ export default function ProductsList({
                       id="ProductoPrecioPromedio"
                       value={
                         precioCostoFocused
-                          ? formData.ProductoPrecioPromedio?.toString() || ""
-                          : formatMilesWithDecimals(
-                              formData.ProductoPrecioPromedio || 0
+                          ? formData.ProductoPrecioPromedio
+                            ? formData.ProductoPrecioPromedio.toString()
+                            : ""
+                          : formData.ProductoPrecioPromedio
+                          ? formatMilesWithDecimals(
+                              formData.ProductoPrecioPromedio
                             )
+                          : ""
                       }
                       onFocus={() => setPrecioCostoFocused(true)}
                       onBlur={() => setPrecioCostoFocused(false)}
@@ -919,7 +929,7 @@ export default function ProductsList({
                                 <td className="px-3 py-2">
                                   <input
                                     type="number"
-                                    value={row.ProductoAlmacenStock}
+                                    value={row.ProductoAlmacenStock || ""}
                                     onChange={(e) =>
                                       updateStockAlmacen(
                                         index,
@@ -936,7 +946,7 @@ export default function ProductsList({
                                     type="number"
                                     min={0}
                                     max={Math.max(0, cantidadCaja - 1)}
-                                    value={row.ProductoAlmacenStockUnitario}
+                                    value={row.ProductoAlmacenStockUnitario || ""}
                                     onChange={(e) => {
                                       const raw = Number(e.target.value) || 0;
                                       const clamped = Math.min(
@@ -983,7 +993,7 @@ export default function ProductsList({
                       type="number"
                       name="ProductoCantidadCaja"
                       id="ProductoCantidadCaja"
-                      value={formData.ProductoCantidadCaja}
+                      value={formData.ProductoCantidadCaja || ""}
                       onChange={handleInputChange}
                       className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     />
@@ -999,7 +1009,7 @@ export default function ProductsList({
                       type="number"
                       name="ProductoIVA"
                       id="ProductoIVA"
-                      value={formData.ProductoIVA}
+                      value={formData.ProductoIVA || ""}
                       onChange={handleInputChange}
                       className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     />
@@ -1015,7 +1025,7 @@ export default function ProductsList({
                       type="number"
                       name="ProductoStockMinimo"
                       id="ProductoStockMinimo"
-                      value={formData.ProductoStockMinimo}
+                      value={formData.ProductoStockMinimo || ""}
                       onChange={handleInputChange}
                       className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     />
