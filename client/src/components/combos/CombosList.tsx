@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SearchButton from "../common/Input/SearchButton";
 import ActionButton from "../common/Button/ActionButton";
 import DataTable from "../common/Table/DataTable";
@@ -59,6 +59,52 @@ export default function CombosList({
     ComboCantidad: 1,
     ComboPrecio: 0,
   });
+  const [productoSearch, setProductoSearch] = useState("");
+  const [isProductoDropdownOpen, setIsProductoDropdownOpen] = useState(false);
+  const productoDropdownRef = useRef<HTMLDivElement>(null);
+
+  const productosOrdenados = useMemo(
+    () =>
+      [...productos].sort((a, b) =>
+        a.ProductoNombre.localeCompare(b.ProductoNombre, "es", {
+          sensitivity: "base",
+        })
+      ),
+    [productos]
+  );
+
+  const productosFiltrados = useMemo(() => {
+    const term = productoSearch.trim().toLowerCase();
+    if (!term) return productosOrdenados;
+    return productosOrdenados.filter((p) =>
+      p.ProductoNombre.toLowerCase().includes(term)
+    );
+  }, [productosOrdenados, productoSearch]);
+
+  const productoSeleccionado = productos.find(
+    (p) => String(p.ProductoId) === String(formData.ProductoId)
+  );
+
+  useEffect(() => {
+    if (!isProductoDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        productoDropdownRef.current &&
+        !productoDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProductoDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isProductoDropdownOpen]);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      setProductoSearch("");
+      setIsProductoDropdownOpen(false);
+    }
+  }, [isModalOpen]);
 
   useEffect(() => {
     if (currentCombo && productos.length > 0) {
@@ -165,7 +211,7 @@ export default function CombosList({
           <div className="relative w-full max-w-2xl max-h-full z-10">
             <form
               onSubmit={handleSubmit}
-              className="relative bg-white rounded-lg shadow max-h-[90vh] overflow-y-auto"
+              className="relative bg-white rounded-lg shadow"
             >
               <div className="flex items-start justify-between p-4 border-b rounded-t">
                 <h3 className="text-xl font-semibold text-gray-900">
@@ -221,24 +267,63 @@ export default function CombosList({
                     >
                       Producto
                     </label>
-                    <select
-                      name="ProductoId"
-                      id="ProductoId"
-                      value={formData.ProductoId}
-                      onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                      required
+                    <div
+                      className="relative"
+                      ref={productoDropdownRef}
                     >
-                      <option value="">Seleccione un producto</option>
-                      {productos.map((producto) => (
-                        <option
-                          key={String(producto.ProductoId)}
-                          value={String(producto.ProductoId)}
-                        >
-                          {producto.ProductoNombre}
-                        </option>
-                      ))}
-                    </select>
+                      <input
+                        type="text"
+                        id="ProductoId"
+                        autoComplete="off"
+                        value={
+                          isProductoDropdownOpen
+                            ? productoSearch
+                            : productoSeleccionado?.ProductoNombre || ""
+                        }
+                        placeholder="Seleccione un producto"
+                        onFocus={() => {
+                          setProductoSearch("");
+                          setIsProductoDropdownOpen(true);
+                        }}
+                        onChange={(e) => {
+                          setProductoSearch(e.target.value);
+                          setIsProductoDropdownOpen(true);
+                        }}
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                        required={!formData.ProductoId}
+                      />
+                      {isProductoDropdownOpen && (
+                        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                          {productosFiltrados.length === 0 ? (
+                            <li className="px-3 py-2 text-sm text-gray-500">
+                              Sin resultados
+                            </li>
+                          ) : (
+                            productosFiltrados.map((producto) => (
+                              <li
+                                key={String(producto.ProductoId)}
+                                onClick={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    ProductoId: String(producto.ProductoId),
+                                  }));
+                                  setProductoSearch("");
+                                  setIsProductoDropdownOpen(false);
+                                }}
+                                className={`cursor-pointer px-3 py-2 text-sm hover:bg-blue-50 ${
+                                  String(producto.ProductoId) ===
+                                  String(formData.ProductoId)
+                                    ? "bg-blue-100 font-medium"
+                                    : ""
+                                }`}
+                              >
+                                {producto.ProductoNombre}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label

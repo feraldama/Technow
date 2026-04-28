@@ -278,7 +278,8 @@ exports.getReporteStock = async (req, res) => {
 // Obtener todos los productos sin paginación
 exports.getAllProductosSinPaginacion = async (req, res) => {
   try {
-    const productos = await Producto.getAll();
+    const filters = extractProductoFilters(req.query);
+    const productos = await Producto.getAll(filters);
     convertirImagenes(productos);
     res.json({ data: productos });
   } catch (error) {

@@ -56,10 +56,16 @@ function buildProductoFiltersWhere(filters = {}) {
 }
 
 const Producto = {
-  getAll: () => {
+  getAll: (filters = {}) => {
     return new Promise((resolve, reject) => {
+      const { conditions, params: filterParams } =
+        buildProductoFiltersWhere(filters);
+      const whereSql = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
       db.query(
-        `SELECT ${PRODUCTO_LIST_COLS} FROM producto p`,
+        `SELECT ${PRODUCTO_LIST_COLS} FROM producto p ${whereSql}`,
+        filterParams,
         (err, results) => {
           if (err) reject(err);
           resolve(results);

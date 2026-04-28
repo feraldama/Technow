@@ -61,8 +61,10 @@ export const getProductosPaginated = async (
   }
 };
 
-export const getProductosAll = async () => {
-  const res = await api.get("/productos/all");
+export const getProductosAll = async (filters?: ProductoFilters) => {
+  const params: { [key: string]: string | number | undefined } = {};
+  applyProductoFilters(params, filters);
+  const res = await api.get("/productos/all", { params });
   return res.data;
 };
 
