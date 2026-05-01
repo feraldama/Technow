@@ -504,7 +504,7 @@ export default function Sales() {
         p.cantidad,
         precioUnitario,
       );
-      const esCombo = combo && p.cantidad >= comboCantidad;
+      const esCombo = combo && !p.caja && p.cantidad >= comboCantidad;
       return {
         ClienteId: clienteSeleccionado?.ClienteId,
         Producto: {
