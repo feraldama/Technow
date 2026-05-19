@@ -4,7 +4,8 @@ const { sendError } = require("../utils/errors");
 function extractClienteFilters(query) {
   const allowedTipos = ["MI", "MA"];
   const filters = {};
-  if (query.tipo && allowedTipos.includes(query.tipo)) filters.tipo = query.tipo;
+  if (query.tipo && allowedTipos.includes(query.tipo))
+    filters.tipo = query.tipo;
   return filters;
 }
 
@@ -23,7 +24,7 @@ exports.getAllClientes = async (req, res) => {
       offset,
       sortBy,
       sortOrder,
-      filters
+      filters,
     );
 
     res.json({
@@ -64,7 +65,7 @@ exports.searchClientes = async (req, res) => {
       offset,
       sortBy,
       sortOrder,
-      filters
+      filters,
     );
 
     res.json({

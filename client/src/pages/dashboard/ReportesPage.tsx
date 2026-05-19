@@ -291,6 +291,9 @@ const ReportesPage: React.FC = () => {
   });
   const [fechaHastaTop, setFechaHastaTop] = useState(() => getHoyISO());
 
+  // Cuál tarjeta de reporte está abierta en modal (slug del reporte) o null
+  const [reporteActivo, setReporteActivo] = useState<string | null>(null);
+
   const totalPaginasCierre = Math.max(
     1,
     Math.ceil(resumenesCierre.length / PAGE_SIZE),
@@ -1203,6 +1206,7 @@ const ReportesPage: React.FC = () => {
     }
   };
 
+
   const exportarCierrePDF = async () => {
     if (resumenesCierre.length === 0) return;
     const { jsPDF, autoTable } = await loadPdf();
@@ -1301,255 +1305,176 @@ const ReportesPage: React.FC = () => {
     setTimeout(() => URL.revokeObjectURL(pdfUrl), 2000);
   };
 
+  // Metadata de las tarjetas (para grid + abrir modal)
+  const renderCard = (
+    titulo: string,
+    descripcion: string,
+    icono: string,
+    accent: string,
+    onClick: () => void,
+  ) => (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`text-left bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:${accent} hover:shadow-md transition group disabled:opacity-50 disabled:cursor-not-allowed`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="text-2xl leading-none mt-0.5">{icono}</div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-slate-900 text-sm leading-snug">
+            {titulo}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+            {descripcion}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">Reportes</h1>
-      <div className="flex flex-col items-center gap-8 max-w-2xl mx-auto">
-        {/* Reporte de Stock valorizado */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Stock valorizado (capital inmovilizado)
-          </h2>
-          <p className="text-gray-600 mb-4 text-sm">
-            Lista los productos con stock, muestra cantidad en cajas y unidades,
-            precio de costo por caja y cuánto vale el stock de cada producto a
-            precio de costo. Incluye desglose por almacén y, al final, el total
-            de capital inmovilizado. Ordenado por valor DESC.
-          </p>
-          <button
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
-            onClick={handleGenerarReporteStock}
-            disabled={loading}
-          >
-            GENERAR REPORTE DE STOCK
-          </button>
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Reportes</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Elegí un reporte para generarlo en PDF.
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-red-700 bg-red-50 border border-red-200 p-3 rounded-md mb-4 text-sm">
+          {error}
         </div>
+      )}
 
-        {/* Reporte de Créditos Pendientes */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Créditos Pendientes a Cobrar
-          </h2>
-          <button
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
-            onClick={handleGenerarPDF}
-            disabled={loading}
-          >
-            GENERAR REPORTE
-          </button>
-        </div>
+      <div className="space-y-8">
+        {/* === Sección Ventas y Stock === */}
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Ventas y stock
+            </h2>
+            <span className="text-xs text-slate-400">5 reportes</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {renderCard(
+              "Stock valorizado",
+              "Productos con stock + capital inmovilizado a precio de costo. Desglose por almacén.",
+              "📦",
+              "border-teal-300",
+              () => {
+                setError(null);
+                handleGenerarReporteStock();
+              },
+            )}
+            {renderCard(
+              "Créditos pendientes",
+              "Lista de saldos a cobrar por cliente con totales por venta.",
+              "💳",
+              "border-green-300",
+              () => {
+                setError(null);
+                handleGenerarPDF();
+              },
+            )}
+            {renderCard(
+              "Ventas por cliente",
+              "Detalle de ventas por cliente (o todos), con pagos de crédito y totales por tipo.",
+              "🧾",
+              "border-blue-300",
+              () => {
+                setError(null);
+                setReporteActivo("ventas");
+              },
+            )}
+            {renderCard(
+              "Productos vendidos y comprados",
+              "Por período: cantidades, monto facturado, costo, ganancia y margen %.",
+              "🔁",
+              "border-blue-300",
+              () => {
+                setError(null);
+                setReporteActivo("movimientos");
+              },
+            )}
+            {renderCard(
+              "Productos más vendidos",
+              "Ranking de productos por cantidad vendida con precio venta, costo y stock actual.",
+              "🏆",
+              "border-indigo-300",
+              () => {
+                setError(null);
+                setReporteActivo("masvendidos");
+              },
+            )}
+          </div>
+        </section>
 
-        {/* Reporte de Ventas por Cliente */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Reporte de Ventas por Cliente
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cliente
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={clienteSeleccionado}
-                onChange={(e) => setClienteSeleccionado(e.target.value)}
-                disabled={loading}
-              >
-                <option value="TODOS">TODOS</option>
-                {clientes.map((cliente) => (
-                  <option key={cliente.ClienteId} value={cliente.ClienteId}>
-                    {cliente.ClienteNombre} {cliente.ClienteApellido}
-                    {cliente.ClienteRUC ? ` - ${cliente.ClienteRUC}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha Desde
-                </label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  value={fechaDesde}
-                  onChange={(e) => setFechaDesde(e.target.value)}
-                  disabled={loading}
-                />
+        {/* === Sección Caja === */}
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Caja
+            </h2>
+            <span className="text-xs text-slate-400">1 reporte</span>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl leading-none">💼</div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900 text-sm">
+                  Cierre de caja por rango
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Apertura, ingresos por método, egresos y diferencia de cada cierre del período.
+                </p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha Hasta
-                </label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  value={fechaHasta}
-                  onChange={(e) => setFechaHasta(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
             </div>
-
-            <button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
-              onClick={handleGenerarReporteVentas}
-              disabled={loading}
-            >
-              GENERAR REPORTE
-            </button>
-          </div>
-        </div>
-
-        {/* Reporte de productos vendidos y comprados */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Productos vendidos y comprados
-          </h2>
-          <p className="text-gray-600 mb-4 text-sm">
-            Para el rango seleccionado, lista todos los productos con
-            movimiento e informa cantidad vendida, cantidad comprada, monto
-            facturado, costo, ganancia y margen %. Al final, un resumen general
-            del período.
-          </p>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="flex flex-wrap items-end gap-3 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Desde
-              </label>
-              <input
-                type="date"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={fechaDesdeMov}
-                onChange={(e) => setFechaDesdeMov(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Hasta
-              </label>
-              <input
-                type="date"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={fechaHastaMov}
-                onChange={(e) => setFechaHastaMov(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-          </div>
-          <button
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
-            onClick={handleGenerarReporteMovimientos}
-            disabled={loading}
-          >
-            GENERAR REPORTE
-          </button>
-        </div>
-
-        {/* Reporte de productos más vendidos */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Productos más vendidos
-          </h2>
-          <p className="text-gray-600 mb-4 text-sm">
-            Lista los productos vendidos en el rango seleccionado, ordenados de
-            más vendido a menos vendido. La cantidad se expresa en cajas y
-            unidades según la cantidad por caja de cada producto (ej. 15
-            unidades con caja de 12 = 1 caja y 3 unidades). Incluye precio de
-            venta, precio de costo, ganancia y stock actual.
-          </p>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Desde
-              </label>
-              <input
-                type="date"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={fechaDesdeTop}
-                onChange={(e) => setFechaDesdeTop(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Hasta
-              </label>
-              <input
-                type="date"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={fechaHastaTop}
-                onChange={(e) => setFechaHastaTop(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-          </div>
-          <button
-            className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-4 rounded-lg text-lg shadow transition disabled:opacity-50"
-            onClick={handleGenerarReporteMasVendidos}
-            disabled={loading}
-          >
-            GENERAR REPORTE
-          </button>
-        </div>
-
-        {/* Reporte de cierre de caja por rango de fechas */}
-        <div className="w-full bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">
-            Reporte de cierre de caja por rango de fechas
-          </h2>
-          <p className="text-gray-600 mb-4 text-sm">
-            Obtenga la misma información del cierre diario para un período (ej.
-            julio a octubre 2025). Seleccione el rango y genere el reporte.
-          </p>
-          <div className="flex flex-wrap items-end gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1">
                 Desde
               </label>
               <input
                 type="date"
                 value={fechaDesdeCierre}
                 onChange={(e) => setFechaDesdeCierre(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1">
                 Hasta
               </label>
               <input
                 type="date"
                 value={fechaHastaCierre}
                 onChange={(e) => setFechaHastaCierre(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1.5 px-4 rounded-md shadow-sm transition disabled:opacity-50"
               onClick={generarReporteCierre}
               disabled={loading}
             >
-              {loading ? "Cargando…" : "Generar reporte"}
+              {loading ? "Cargando…" : "Generar"}
             </button>
             {resumenesCierre.length > 0 && (
               <button
-                className="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg shadow transition"
+                className="bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold py-1.5 px-4 rounded-md shadow-sm transition"
                 onClick={exportarCierrePDF}
               >
-                Exportar a PDF
+                Exportar PDF
               </button>
             )}
           </div>
 
           {resumenesCierre.length > 0 && (
             <>
-              <p className="text-sm text-gray-500 mb-2">
+              <p className="text-xs text-slate-500 mb-2">
                 {resumenesCierre.length} cierre(s) en el período. Página{" "}
                 {paginaCierre} de {totalPaginasCierre}.
               </p>
@@ -1729,17 +1654,177 @@ const ReportesPage: React.FC = () => {
               </div>
             </>
           )}
-        </div>
-
-        {loading && (
-          <div className="text-center text-gray-600">Generando PDF...</div>
-        )}
-        {error && (
-          <div className="text-red-600 bg-red-50 p-4 rounded-lg w-full">
-            {error}
           </div>
-        )}
+        </section>
       </div>
+
+      {/* Loading overlay durante generación */}
+      {loading && (
+        <div className="fixed top-4 right-4 bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-md shadow-lg z-50">
+          Generando reporte…
+        </div>
+      )}
+
+      {/* Modal de configuración de reportes */}
+      {reporteActivo && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4"
+          onClick={() => !loading && setReporteActivo(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {reporteActivo === "ventas" && "Ventas por cliente"}
+                {reporteActivo === "movimientos" && "Productos vendidos y comprados"}
+                {reporteActivo === "masvendidos" && "Productos más vendidos"}
+              </h3>
+              <button
+                onClick={() => setReporteActivo(null)}
+                className="text-slate-400 hover:text-slate-700 text-2xl leading-none p-0 w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            {reporteActivo === "ventas" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Cliente
+                  </label>
+                  <select
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    value={clienteSeleccionado}
+                    onChange={(e) => setClienteSeleccionado(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="TODOS">TODOS</option>
+                    {clientes.map((cliente) => (
+                      <option key={cliente.ClienteId} value={cliente.ClienteId}>
+                        {cliente.ClienteNombre} {cliente.ClienteApellido}
+                        {cliente.ClienteRUC ? ` - ${cliente.ClienteRUC}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaDesde}
+                      onChange={(e) => setFechaDesde(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaHasta}
+                      onChange={(e) => setFechaHasta(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleGenerarReporteVentas}
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md shadow-sm transition disabled:opacity-50"
+                >
+                  {loading ? "Generando…" : "Generar PDF"}
+                </button>
+              </div>
+            )}
+
+            {reporteActivo === "movimientos" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaDesdeMov}
+                      onChange={(e) => setFechaDesdeMov(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaHastaMov}
+                      onChange={(e) => setFechaHastaMov(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleGenerarReporteMovimientos}
+                  disabled={loading}
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-md shadow-sm transition disabled:opacity-50"
+                >
+                  {loading ? "Generando…" : "Generar PDF"}
+                </button>
+              </div>
+            )}
+
+            {reporteActivo === "masvendidos" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaDesdeTop}
+                      onChange={(e) => setFechaDesdeTop(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaHastaTop}
+                      onChange={(e) => setFechaHastaTop(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleGenerarReporteMasVendidos}
+                  disabled={loading}
+                  className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2 rounded-md shadow-sm transition disabled:opacity-50"
+                >
+                  {loading ? "Generando…" : "Generar PDF"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

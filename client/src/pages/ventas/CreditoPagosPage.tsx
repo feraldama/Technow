@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { callGenexusSoap } from "../../services/genexus-soap.service";
+import { recibirPagoCredito } from "../../services/venta.service";
+import { usePermiso } from "../../hooks/usePermiso";
+import { PermissionDenied } from "../../components/common/ui";
 import Swal from "sweetalert2";
 import { getAllClientesSinPaginacion } from "../../services/clientes.service";
 import { formatCurrency, formatMiles } from "../../utils/utils";
@@ -33,6 +35,7 @@ const TIPOS_PAGO = [
 ];
 
 const CreditoPagosPage = () => {
+  const puedeLeerPagos = usePermiso("COBROCREDITO", "leer");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<string>("");
   const [ventasPendientes, setVentasPendientes] = useState<VentaPendiente[]>(
@@ -160,29 +163,15 @@ const CreditoPagosPage = () => {
       return;
     }
 
-    const fechaDate = new Date(fecha + "T00:00:00");
-    const dia = fechaDate.getDate();
-    const mes = fechaDate.getMonth() + 1;
-    const año = fechaDate.getFullYear() % 100;
-    const diaStr = dia < 10 ? `0${dia}` : dia.toString();
-    const mesStr = mes < 10 ? `0${mes}` : mes.toString();
-    const añoStr = año < 10 ? `0${año}` : año.toString();
-    const fechaFormateada = `${diaStr}/${mesStr}/${añoStr}`;
-
     try {
-      await callGenexusSoap({
-        endpoint: "apcreditows",
-        operation: "PCreditoWS.VENTACONFIRMAR",
-        namespace: "TechNow",
-        payload: {
-          Tipo: "V",
-          Clienteid: Number(selectedCliente),
-          Montorecibido: montoPago,
-          Cajaid: cajaAperturada.CajaId,
-          Usuarioid: user?.id,
-          Fechastring: fechaFormateada,
-          Ventapagotipo: tipoPago,
-        },
+      await recibirPagoCredito({
+        Tipo: "V",
+        ClienteId: Number(selectedCliente),
+        MontoRecibido: montoPago,
+        CajaId: Number(cajaAperturada.CajaId),
+        UsuarioId: String(user?.id ?? ""),
+        Fecha: fecha,
+        VentaPagoTipo: tipoPago as "CO" | "PO" | "TR",
       });
 
       let timerInterval: ReturnType<typeof setInterval>;
@@ -222,6 +211,9 @@ const CreditoPagosPage = () => {
       Swal.fire("Error", "Hubo un problema al procesar el pago.", "error");
     }
   };
+
+  if (!puedeLeerPagos)
+    return <PermissionDenied resource="el cobro de créditos" />;
 
   return (
     <div className="container mx-auto px-4">

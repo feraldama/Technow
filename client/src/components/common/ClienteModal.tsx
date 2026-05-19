@@ -35,21 +35,21 @@ const ClienteModal: React.FC<ClienteModalProps> = ({
   const clientesFiltrados = useMemo(() => {
     return clientes.filter(
       (c) =>
-        c.ClienteRUC.toLowerCase().includes(filtros.ruc.toLowerCase()) &&
-        c.ClienteNombre.toLowerCase().includes(filtros.nombre.toLowerCase()) &&
+        c.ClienteRUC?.toLowerCase().includes(filtros.ruc.toLowerCase()) &&
+        c.ClienteNombre?.toLowerCase().includes(filtros.nombre.toLowerCase()) &&
         (c.ClienteApellido || "")
-          .toLowerCase()
+          ?.toLowerCase()
           .includes(filtros.apellido.toLowerCase()) &&
         (c.ClienteTelefono || "")
-          .toLowerCase()
-          .includes(filtros.telefono.toLowerCase())
+          ?.toLowerCase()
+          .includes(filtros.telefono.toLowerCase()),
     );
   }, [clientes, filtros]);
 
   const totalPages = Math.ceil(clientesFiltrados.length / rowsPerPage);
   const paginatedClientes = clientesFiltrados.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleCreateSubmit = (cliente: Cliente) => {
@@ -139,10 +139,7 @@ const ClienteModal: React.FC<ClienteModalProps> = ({
             <tbody>
               {paginatedClientes.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="text-center py-4 text-text-subtle"
-                  >
+                  <td colSpan={5} className="text-center py-4 text-text-subtle">
                     No hay clientes
                   </td>
                 </tr>
@@ -180,7 +177,7 @@ const ClienteModal: React.FC<ClienteModalProps> = ({
             {clientesFiltrados.length === 0
               ? "0"
               : `${formatMiles((page - 1) * rowsPerPage + 1)} a ${formatMiles(
-                  Math.min(page * rowsPerPage, clientesFiltrados.length)
+                  Math.min(page * rowsPerPage, clientesFiltrados.length),
                 )} de ${formatMiles(clientesFiltrados.length)}`}
           </div>
           <div className="flex items-center gap-2">
