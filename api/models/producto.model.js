@@ -369,11 +369,11 @@ const Producto = {
       camposActualizables.forEach((campo) => {
         if (productoData[campo] === undefined) return;
         if (campo === "ProductoImagen") {
-          const imagenBuffer = productoData.ProductoImagen
-            ? Buffer.from(productoData.ProductoImagen, "base64")
-            : null;
+          // Cadena vacía = "sin cambios de imagen". La columna es NOT NULL,
+          // así que la omitimos del UPDATE para preservar la actual.
+          if (!productoData.ProductoImagen) return;
           updateFields.push(`${campo} = ?`);
-          values.push(imagenBuffer);
+          values.push(Buffer.from(productoData.ProductoImagen, "base64"));
         } else {
           updateFields.push(`${campo} = ?`);
           values.push(productoData[campo]);
