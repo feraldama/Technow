@@ -83,6 +83,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setBancoDebito,
     setBancoCredito,
     setCuentaCliente,
+    setVentaNroPOS,
     setTotalRest,
     totalCost,
   ]);

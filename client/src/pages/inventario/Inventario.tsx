@@ -265,6 +265,8 @@ export default function Inventario() {
     } finally {
       setLoading(false);
     }
+    // refreshKey se incluye a propósito para forzar el re-fetch desde sendRequest
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busquedaDebounced, currentPage, itemsPerPage, user?.LocalId, refreshKey]);
 
   useEffect(() => {
