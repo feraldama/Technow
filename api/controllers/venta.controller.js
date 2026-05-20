@@ -542,17 +542,20 @@ exports.confirmar = async (req, res) => {
            FROM productoalmacen WHERE ProductoId = ? AND AlmacenId = ?`,
           [productoId, AlmacenOrigenId]
         );
-        if (!paRows.length) {
-          throw new Error(
-            `Producto ${productoId} no tiene stock en almacén ${AlmacenOrigenId}`
+        let paStock = 0;
+        let paStockUnit = 0;
+        if (paRows.length) {
+          paStock = paRows[0].ProductoAlmacenStock;
+          paStockUnit = paRows[0].ProductoAlmacenStockUnitario;
+        } else {
+          await conn.query(
+            `INSERT INTO productoalmacen
+               (ProductoId, AlmacenId, ProductoAlmacenStock, ProductoAlmacenStockUnitario)
+             VALUES (?, ?, 0, 0)`,
+            [productoId, AlmacenOrigenId]
           );
         }
-        const nPa = restarUnidades(
-          paRows[0].ProductoAlmacenStock,
-          paRows[0].ProductoAlmacenStockUnitario,
-          cantidad,
-          cantidadCaja
-        );
+        const nPa = restarUnidades(paStock, paStockUnit, cantidad, cantidadCaja);
         await conn.query(
           `UPDATE productoalmacen
            SET ProductoAlmacenStock = ?, ProductoAlmacenStockUnitario = ?
@@ -564,6 +567,18 @@ exports.confirmar = async (req, res) => {
           `UPDATE producto SET ProductoStock = ProductoStock - ? WHERE ProductoId = ?`,
           [cantidad, productoId]
         );
+        const [paExists] = await conn.query(
+          `SELECT 1 FROM productoalmacen WHERE ProductoId = ? AND AlmacenId = ?`,
+          [productoId, AlmacenOrigenId]
+        );
+        if (!paExists.length) {
+          await conn.query(
+            `INSERT INTO productoalmacen
+               (ProductoId, AlmacenId, ProductoAlmacenStock, ProductoAlmacenStockUnitario)
+             VALUES (?, ?, 0, 0)`,
+            [productoId, AlmacenOrigenId]
+          );
+        }
         await conn.query(
           `UPDATE productoalmacen
            SET ProductoAlmacenStock = ProductoAlmacenStock - ?
