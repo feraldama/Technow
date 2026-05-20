@@ -77,15 +77,26 @@ function translate(sql) {
   result = mapOutsideStrings(result, (chunk) => {
     // CAST(... AS CHAR) is MySQL syntax for stringifying for LIKE compares; PG
     // wants AS TEXT. Do this first so the LIKE rewrite below sees the new form.
-    let r = chunk.replace(/CAST\s*\(\s*([^)]+?)\s+AS\s+CHAR\s*\)/gi, "CAST($1 AS TEXT)");
+    let r = chunk.replace(
+      /CAST\s*\(\s*([^)]+?)\s+AS\s+CHAR\s*\)/gi,
+      "CAST($1 AS TEXT)",
+    );
     // Wrap the left-hand side of every LIKE in CAST(... AS TEXT) so integer/
     // bigint columns work (MySQL implicit-casts, PG doesn't) and switch to the
     // case-insensitive ILIKE operator (MySQL's default collation is CI).
-    const LHS = /(CAST\s*\([^)]+\)|CONCAT\s*\([^)]+\)|[A-Za-z_][\w]*\.[A-Za-z_]\w*|[A-Za-z_]\w*)\s+LIKE\b/gi;
+    const LHS =
+      /(CAST\s*\([^)]+\)|CONCAT\s*\([^)]+\)|[A-Za-z_][\w]*\.[A-Za-z_]\w*|[A-Za-z_]\w*)\s+LIKE\b/gi;
     r = r.replace(LHS, (_m, lhs) => {
       const alreadyCast = /^CAST\s*\(/i.test(lhs);
       return `${alreadyCast ? lhs : `CAST(${lhs} AS TEXT)`} ILIKE`;
     });
+    // Catch-all: si quedó algún `LIKE` sin transformar (típico cuando el
+    // CONCAT del LHS contiene strings literales y mapOutsideStrings lo parte,
+    // dejando la pieza con paréntesis intermedios sin matchear el regex de
+    // arriba) lo cambiamos a ILIKE igual. CONCAT/text expressions devuelven
+    // text, así que no necesitan CAST adicional. Esto preserva el contrato
+    // case-insensitive de MySQL.
+    r = r.replace(/\bLIKE\b/gi, "ILIKE");
     // Quote column aliases that start with PascalCase (`AS HasImagen` ->
     // `AS "HasImagen"`) so PG preserves the original casing in the result
     // fields. Without this, an alias like `HasImagen` comes back as
@@ -146,7 +157,9 @@ function detectInsertTable(sql) {
 // column's PascalCase name.
 function buildRowMapper(fields) {
   const names = fields.map((f) =>
-    f.tableID > 0 && columnNameByLower[f.name] ? columnNameByLower[f.name] : f.name
+    f.tableID > 0 && columnNameByLower[f.name]
+      ? columnNameByLower[f.name]
+      : f.name,
   );
   return (row) => {
     const out = {};
