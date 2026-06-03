@@ -480,34 +480,34 @@ const Producto = {
    */
   getReporteMovimientosPorRango: (fechaDesde, fechaHasta) => {
     return new Promise((resolve, reject) => {
+      // Aliases del subquery en minúsculas para que el adaptador db.js no los
+      // entrecomille, evitando el error de referencia case-sensitive en PG.
       const query = `
         SELECT
           p.ProductoId,
           p.ProductoCodigo,
           p.ProductoNombre,
-          COALESCE(v.CantidadVendidaCajas,     0) AS CantidadVendidaCajas,
-          COALESCE(v.CantidadVendidaUnidades,  0) AS CantidadVendidaUnidades,
-          COALESCE(v.MontoVendido,             0) AS MontoVendido,
-          COALESCE(v.CostoVendido,             0) AS CostoVendido,
-          COALESCE(c.CantidadCompradaCajas,    0) AS CantidadCompradaCajas,
-          COALESCE(c.CantidadCompradaUnidades, 0) AS CantidadCompradaUnidades,
-          COALESCE(c.MontoComprado,            0) AS MontoComprado
+          COALESCE(v.cantidadvendidacajas,     0) AS CantidadVendidaCajas,
+          COALESCE(v.cantidadvendidaunidades,  0) AS CantidadVendidaUnidades,
+          COALESCE(v.montovendido,             0) AS MontoVendido,
+          COALESCE(v.costovendido,             0) AS CostoVendido,
+          COALESCE(c.cantidadcompradacajas,    0) AS CantidadCompradaCajas,
+          COALESCE(c.cantidadcompradaunidades, 0) AS CantidadCompradaUnidades,
+          COALESCE(c.montocomprado,            0) AS MontoComprado
         FROM producto p
         LEFT JOIN (
           SELECT
             vp.ProductoId,
-            /* 'C' o desconocido → caja; 'U' → unidad */
             SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
                      THEN 0 ELSE vp.VentaProductoCantidad END)
-              AS CantidadVendidaCajas,
+              AS cantidadvendidacajas,
             SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
                      THEN vp.VentaProductoCantidad ELSE 0 END)
-              AS CantidadVendidaUnidades,
-            SUM(vp.VentaProductoPrecioTotal) AS MontoVendido,
-            /* precioPromedio ya está en la unidad del renglón, no dividir */
+              AS cantidadvendidaunidades,
+            SUM(vp.VentaProductoPrecioTotal) AS montovendido,
             SUM(COALESCE(vp.VentaProductoCantidad, 0)
                 * COALESCE(vp.VentaProductoPrecioPromedio, 0))
-              AS CostoVendido
+              AS costovendido
           FROM ventaproducto vp
           INNER JOIN venta vv ON vv.VentaId = vp.VentaId
           WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
@@ -518,20 +518,20 @@ const Producto = {
             cp.ProductoId,
             SUM(CASE WHEN cp.CompraProductoCantidadUnidad = 'U'
                      THEN 0 ELSE cp.CompraProductoCantidad END)
-              AS CantidadCompradaCajas,
+              AS cantidadcompradacajas,
             SUM(CASE WHEN cp.CompraProductoCantidadUnidad = 'U'
                      THEN cp.CompraProductoCantidad ELSE 0 END)
-              AS CantidadCompradaUnidades,
-            SUM(cp.CompraProductoCantidad * cp.CompraProductoPrecio) AS MontoComprado
+              AS cantidadcompradaunidades,
+            SUM(cp.CompraProductoCantidad * cp.CompraProductoPrecio) AS montocomprado
           FROM compraproducto cp
           INNER JOIN compra cc ON cc.CompraId = cp.CompraId
           WHERE DATE(cc.CompraFecha) BETWEEN ? AND ?
           GROUP BY cp.ProductoId
         ) c ON c.ProductoId = p.ProductoId
-        WHERE COALESCE(v.CantidadVendidaCajas,     0) <> 0
-           OR COALESCE(v.CantidadVendidaUnidades,  0) <> 0
-           OR COALESCE(c.CantidadCompradaCajas,    0) <> 0
-           OR COALESCE(c.CantidadCompradaUnidades, 0) <> 0
+        WHERE COALESCE(v.cantidadvendidacajas,     0) <> 0
+           OR COALESCE(v.cantidadvendidaunidades,  0) <> 0
+           OR COALESCE(c.cantidadcompradacajas,    0) <> 0
+           OR COALESCE(c.cantidadcompradaunidades, 0) <> 0
         ORDER BY p.ProductoNombre ASC
       `;
       db.query(
@@ -578,6 +578,8 @@ const Producto = {
       // La agregación va en subquery por ProductoId y recién después se
       // cruza con producto. Si se hacía GROUP BY sobre producto directo,
       // la columna BLOB ProductoImagen colgaba el query en MySQL.
+      // Aliases del subquery en minúsculas para que el adaptador db.js no los
+      // entrecomille, evitando el error de referencia case-sensitive en PG.
       const query = `
         SELECT
           p.ProductoId,
@@ -589,29 +591,29 @@ const Producto = {
           COALESCE(p.ProductoPrecioPromedio, 0) AS ProductoPrecioPromedio,
           COALESCE(p.ProductoStock, 0)          AS ProductoStock,
           COALESCE(p.ProductoStockUnitario, 0)  AS ProductoStockUnitario,
-          v.CantidadVendidaCajas,
-          v.CantidadVendidaUnidades,
-          v.MontoVendido,
-          v.CostoVendido
+          v.cantidadvendidacajas                AS CantidadVendidaCajas,
+          v.cantidadvendidaunidades             AS CantidadVendidaUnidades,
+          v.montovendido                        AS MontoVendido,
+          v.costovendido                        AS CostoVendido
         FROM (
           SELECT
             vp.ProductoId,
             SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
                      THEN 0 ELSE vp.VentaProductoCantidad END)
-              AS CantidadVendidaCajas,
+              AS cantidadvendidacajas,
             SUM(CASE WHEN vp.VentaProductoUnitario = 'U'
                      THEN vp.VentaProductoCantidad ELSE 0 END)
-              AS CantidadVendidaUnidades,
-            SUM(COALESCE(vp.VentaProductoPrecioTotal, 0)) AS MontoVendido,
+              AS cantidadvendidaunidades,
+            SUM(COALESCE(vp.VentaProductoPrecioTotal, 0)) AS montovendido,
             SUM(COALESCE(vp.VentaProductoCantidad, 0)
-                * COALESCE(vp.VentaProductoPrecioPromedio, 0)) AS CostoVendido
+                * COALESCE(vp.VentaProductoPrecioPromedio, 0)) AS costovendido
           FROM ventaproducto vp
           INNER JOIN venta vv ON vv.VentaId = vp.VentaId
           WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
           GROUP BY vp.ProductoId
         ) v
         INNER JOIN producto p ON p.ProductoId = v.ProductoId
-        WHERE v.CantidadVendidaCajas <> 0 OR v.CantidadVendidaUnidades <> 0
+        WHERE v.cantidadvendidacajas <> 0 OR v.cantidadvendidaunidades <> 0
       `;
       db.query(query, [fechaDesde, fechaHasta], (err, rows) => {
         if (err) return reject(err);
