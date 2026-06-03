@@ -505,11 +505,15 @@ const Producto = {
                      THEN vp.VentaProductoCantidad ELSE 0 END)
               AS cantidadvendidaunidades,
             SUM(vp.VentaProductoPrecioTotal) AS montovendido,
-            SUM(COALESCE(vp.VentaProductoCantidad, 0)
-                * COALESCE(vp.VentaProductoPrecioPromedio, 0))
-              AS costovendido
+            SUM(COALESCE(vp.VentaProductoCantidad, 0) *
+              CASE WHEN vp.VentaProductoUnitario = 'U'
+                THEN COALESCE(vp.VentaProductoPrecioPromedio, 0)
+                ELSE COALESCE(vp.VentaProductoPrecioPromedio, 0)
+                     / NULLIF(pr.ProductoCantidadCaja, 0)
+              END) AS costovendido
           FROM ventaproducto vp
           INNER JOIN venta vv ON vv.VentaId = vp.VentaId
+          INNER JOIN producto pr ON pr.ProductoId = vp.ProductoId
           WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
           GROUP BY vp.ProductoId
         ) v ON v.ProductoId = p.ProductoId
@@ -605,10 +609,15 @@ const Producto = {
                      THEN vp.VentaProductoCantidad ELSE 0 END)
               AS cantidadvendidaunidades,
             SUM(COALESCE(vp.VentaProductoPrecioTotal, 0)) AS montovendido,
-            SUM(COALESCE(vp.VentaProductoCantidad, 0)
-                * COALESCE(vp.VentaProductoPrecioPromedio, 0)) AS costovendido
+            SUM(COALESCE(vp.VentaProductoCantidad, 0) *
+              CASE WHEN vp.VentaProductoUnitario = 'U'
+                THEN COALESCE(vp.VentaProductoPrecioPromedio, 0)
+                ELSE COALESCE(vp.VentaProductoPrecioPromedio, 0)
+                     / NULLIF(pr.ProductoCantidadCaja, 0)
+              END) AS costovendido
           FROM ventaproducto vp
           INNER JOIN venta vv ON vv.VentaId = vp.VentaId
+          INNER JOIN producto pr ON pr.ProductoId = vp.ProductoId
           WHERE DATE(vv.VentaFecha) BETWEEN ? AND ?
           GROUP BY vp.ProductoId
         ) v
