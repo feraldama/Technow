@@ -514,7 +514,7 @@ const Venta = {
         WHERE v.VentaTipo = 'CR'
         GROUP BY c.ClienteId, c.ClienteNombre, c.ClienteApellido
         HAVING SUM(v.Total - COALESCE(v.VentaEntrega,0)) > 0
-        ORDER BY Cliente
+        ORDER BY CONCAT(TRIM(c.ClienteNombre), ' ', TRIM(c.ClienteApellido))
       `;
       db.query(query, (err, results) => {
         if (err) return reject(err);
