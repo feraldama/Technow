@@ -10,7 +10,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { getLocales } from "../../services/locales.service";
 import { getAlmacenes } from "../../services/almacenes.service";
-import { formatMiles, formatMilesWithDecimals } from "../../utils/utils";
+import ModalDialog from "../common/ModalDialog";
+import Button from "../common/Button/Button";
+import { formatMiles } from "../../utils/utils";
+import MoneyInput from "../common/Input/MoneyInput";
 import type { ProductoFilters } from "../../services/productos.service";
 
 export interface ProductoAlmacenRow {
@@ -167,7 +170,6 @@ export default function ProductsList({
     []
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [precioCostoFocused, setPrecioCostoFocused] = useState(false);
 
   useEffect(() => {
     getAlmacenes(1, 200).then((res) => {
@@ -233,7 +235,6 @@ export default function ProductsList({
         LocalId: 1,
       });
     }
-    setPrecioCostoFocused(false); // Resetear el estado de foco cuando cambia el producto
     getLocales(1, 200).then((res) => {
       setLocales(res.data || []);
     });
@@ -370,7 +371,7 @@ export default function ProductsList({
       key: "ProductoPrecioVenta",
       label: "Precio Venta",
       render: (item: Producto) =>
-        `Gs. ${item.ProductoPrecioVenta?.toLocaleString()}`,
+        `Gs. ${formatMiles(item.ProductoPrecioVenta ?? 0)}`,
     },
     {
       key: "ProductoStock",
@@ -406,12 +407,12 @@ export default function ProductsList({
             <button
               type="button"
               onClick={onToggleFilters}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text bg-white border border-border rounded-md hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-2 focus:ring-brand-600/30 cursor-pointer"
             >
               <FunnelIcon className="w-4 h-4" />
               Filtros
               {activeFilterCount > 0 && (
-                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-blue-600 rounded-full">
+                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-brand-700 rounded-full">
                   {activeFilterCount}
                 </span>
               )}
@@ -427,10 +428,10 @@ export default function ProductsList({
         </div>
       </div>
       {onFiltersChange && showFilters && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+        <div className="bg-surface-muted border border-border rounded-lg p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Local
               </label>
               <select
@@ -438,7 +439,7 @@ export default function ProductsList({
                 onChange={(e) =>
                   updateFilter("localId", e.target.value || "")
                 }
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               >
                 <option value="">Todos</option>
                 {locales.map((l) => (
@@ -449,7 +450,7 @@ export default function ProductsList({
               </select>
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Stock mín.
               </label>
               <input
@@ -479,11 +480,11 @@ export default function ProductsList({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Stock máx.
               </label>
               <input
@@ -513,11 +514,11 @@ export default function ProductsList({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Precio mín.
               </label>
               <input
@@ -547,11 +548,11 @@ export default function ProductsList({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Precio máx.
               </label>
               <input
@@ -581,7 +582,7 @@ export default function ProductsList({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
           </div>
@@ -590,7 +591,7 @@ export default function ProductsList({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-text-muted hover:text-text cursor-pointer"
               >
                 <XMarkIcon className="w-4 h-4" />
                 Limpiar filtros
@@ -601,7 +602,7 @@ export default function ProductsList({
       )}
 
       <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-text-muted">
           Mostrando {formatMiles(productos.length)} de{" "}
           {formatMiles(pagination?.totalItems || 0)} productos
         </div>
@@ -620,56 +621,32 @@ export default function ProductsList({
       />
 
       {/* Modal para crear/editar */}
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onCloseModal();
-          }}
-        >
-          {/* Fondo opacado */}
-          <div className="absolute inset-0 bg-black opacity-50" />
-
-          <div className="relative w-full max-w-2xl max-h-full z-10">
-            <form
-              onSubmit={handleSubmit}
-              className="relative bg-white rounded-lg shadow"
-            >
-              <div className="flex items-start justify-between p-4 border-b rounded-t">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {currentProduct
-                    ? `Editar producto: ${currentProduct.ProductoNombre}`
-                    : "Crear nuevo producto"}
-                </h3>
-                <button
-                  type="button"
-                  className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center"
-                  onClick={onCloseModal}
-                >
-                  <svg
-                    className="w-3 h-3"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 14 14"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-6 gap-6">
+      <ModalDialog
+        open={isModalOpen}
+        onClose={onCloseModal}
+        title={
+          currentProduct
+            ? `Editar producto: ${currentProduct.ProductoNombre}`
+            : "Crear nuevo producto"
+        }
+        size="4xl"
+        footer={
+          <>
+            <Button variant="secondary" type="button" onClick={onCloseModal}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" form="producto-form">
+              {currentProduct ? "Actualizar" : "Crear"}
+            </Button>
+          </>
+        }
+      >
+        <form id="producto-form" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-6 gap-6">
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoCodigo"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Código
                     </label>
@@ -679,14 +656,14 @@ export default function ProductsList({
                       id="ProductoCodigo"
                       value={formData.ProductoCodigo}
                       onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5"
                       required
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoNombre"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Nombre
                     </label>
@@ -696,35 +673,27 @@ export default function ProductsList({
                       id="ProductoNombre"
                       value={formData.ProductoNombre}
                       onChange={handleNombreChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 uppercase"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5 uppercase"
                       required
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoPrecioVenta"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Precio Minorista
                     </label>
-                    <input
-                      type="text"
+                    <MoneyInput
                       name="ProductoPrecioVenta"
                       id="ProductoPrecioVenta"
-                      value={
-                        formData.ProductoPrecioVenta
-                          ? formatMiles(formData.ProductoPrecioVenta)
-                          : ""
-                      }
-                      onChange={(e) => {
-                        // Eliminar puntos y formatear a número
-                        const raw = e.target.value.replace(/\./g, "");
+                      value={formData.ProductoPrecioVenta}
+                      onValueChange={(v) =>
                         setFormData((prev) => ({
                           ...prev,
-                          ProductoPrecioVenta: Number(raw),
-                        }));
-                      }}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                          ProductoPrecioVenta: v,
+                        }))
+                      }
                       required
                     />
                   </div>
@@ -732,95 +701,65 @@ export default function ProductsList({
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoPrecioVentaMayorista"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Precio Mayorista
                     </label>
-                    <input
-                      type="text"
+                    <MoneyInput
                       name="ProductoPrecioVentaMayorista"
                       id="ProductoPrecioVentaMayorista"
-                      value={
-                        formData.ProductoPrecioVentaMayorista
-                          ? formatMiles(formData.ProductoPrecioVentaMayorista)
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\./g, "");
+                      value={formData.ProductoPrecioVentaMayorista}
+                      onValueChange={(v) =>
                         setFormData((prev) => ({
                           ...prev,
-                          ProductoPrecioVentaMayorista: Number(raw),
-                        }));
-                      }}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                          ProductoPrecioVentaMayorista: v,
+                        }))
+                      }
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoPrecioUnitario"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Precio Unitario
                     </label>
-                    <input
-                      type="number"
+                    <MoneyInput
                       name="ProductoPrecioUnitario"
                       id="ProductoPrecioUnitario"
-                      value={formData.ProductoPrecioUnitario || ""}
-                      onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                      value={formData.ProductoPrecioUnitario}
+                      onValueChange={(v) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          ProductoPrecioUnitario: v,
+                        }))
+                      }
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoPrecioPromedio"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Precio Costo
                     </label>
-                    <input
-                      type="text"
+                    <MoneyInput
                       name="ProductoPrecioPromedio"
                       id="ProductoPrecioPromedio"
-                      value={
-                        precioCostoFocused
-                          ? formData.ProductoPrecioPromedio
-                            ? formData.ProductoPrecioPromedio.toString()
-                            : ""
-                          : formData.ProductoPrecioPromedio
-                          ? formatMilesWithDecimals(
-                              formData.ProductoPrecioPromedio
-                            )
-                          : ""
-                      }
-                      onFocus={() => setPrecioCostoFocused(true)}
-                      onBlur={() => setPrecioCostoFocused(false)}
-                      onChange={(e) => {
-                        // Permitir escribir números y punto decimal
-                        let raw = e.target.value.replace(/[^\d.]/g, "");
-
-                        // Asegurar que solo haya un punto decimal
-                        const parts = raw.split(".");
-                        if (parts.length > 2) {
-                          raw = parts[0] + "." + parts.slice(1).join("");
-                        }
-
-                        const numValue =
-                          raw === "" || raw === "." ? 0 : parseFloat(raw);
+                      decimals
+                      value={formData.ProductoPrecioPromedio}
+                      onValueChange={(v) =>
                         setFormData((prev) => ({
                           ...prev,
-                          ProductoPrecioPromedio: isNaN(numValue)
-                            ? 0
-                            : numValue,
-                        }));
-                      }}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                          ProductoPrecioPromedio: v,
+                        }))
+                      }
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoStock"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Stock total (todos los almacenes)
                     </label>
@@ -831,14 +770,14 @@ export default function ProductsList({
                       min={0}
                       value={stockTotalCajas}
                       readOnly
-                      className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg block w-full p-2.5 cursor-not-allowed"
                       title="Cajas + unidades convertidas a cajas (según Cantidad por Caja)"
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoStockUnitario"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Stock unitario total (todos los almacenes)
                     </label>
@@ -849,28 +788,28 @@ export default function ProductsList({
                       min={0}
                       value={stockUnitarioTotal}
                       readOnly
-                      className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg block w-full p-2.5 cursor-not-allowed"
                       title="Resto de unidades después de formar cajas (según Cantidad por Caja)"
                     />
                   </div>
                   {/* Stock por almacén */}
                   <div className="col-span-6">
                     <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-900">
+                      <label className="block text-sm font-medium text-text">
                         Stock por almacén (editar cantidades aquí)
                       </label>
                       <button
                         type="button"
                         onClick={addStockAlmacen}
-                        className="text-blue-600 hover:text-blue-800 border border-blue-300 bg-white rounded px-3 py-1 text-sm font-medium cursor-pointer flex items-center gap-1"
+                        className="text-brand-700 hover:text-blue-800 border border-blue-300 bg-white rounded px-3 py-1 text-sm font-medium cursor-pointer flex items-center gap-1"
                       >
                         <PlusIcon className="w-4 h-4" />
                         Agregar almacén
                       </button>
                     </div>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="min-w-full text-sm text-left text-gray-900">
-                        <thead className="bg-gray-100 text-gray-700">
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <table className="min-w-full text-sm text-left text-text">
+                        <thead className="bg-surface-muted text-text">
                           <tr>
                             <th className="px-3 py-2">Almacén</th>
                             <th className="px-3 py-2">Stock (cajas)</th>
@@ -883,7 +822,7 @@ export default function ProductsList({
                             <tr>
                               <td
                                 colSpan={4}
-                                className="px-3 py-4 text-gray-500"
+                                className="px-3 py-4 text-text-muted"
                               >
                                 Sin almacenes. Agregue al menos uno para cargar
                                 stock.
@@ -893,7 +832,7 @@ export default function ProductsList({
                             stockAlmacenes.map((row, index) => (
                               <tr
                                 key={index}
-                                className="border-t border-gray-200 bg-white"
+                                className="border-t border-border bg-white"
                               >
                                 <td className="px-3 py-2">
                                   <select
@@ -904,7 +843,7 @@ export default function ProductsList({
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                    className="bg-surface-muted border border-border text-text rounded focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2"
                                   >
                                     {almacenes.map((a) => {
                                       const used =
@@ -937,7 +876,7 @@ export default function ProductsList({
                                         Number(e.target.value) || 0
                                       )
                                     }
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                    className="bg-surface-muted border border-border text-text rounded focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2"
                                     title="Permitido negativo (ej. ventas registradas antes de cargar la compra)"
                                   />
                                 </td>
@@ -959,7 +898,7 @@ export default function ProductsList({
                                         clamped
                                       );
                                     }}
-                                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                    className="bg-surface-muted border border-border text-text rounded focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2"
                                     title={`Máximo ${
                                       cantidadCaja - 1
                                     } (Cantidad en Caja - 1)`}
@@ -969,7 +908,7 @@ export default function ProductsList({
                                   <button
                                     type="button"
                                     onClick={() => removeStockAlmacen(index)}
-                                    className="text-red-600 hover:text-red-800 p-1 rounded"
+                                    className="text-danger-700 hover:text-red-800 p-1 rounded"
                                     title="Eliminar"
                                   >
                                     <TrashIcon className="w-5 h-5" />
@@ -985,7 +924,7 @@ export default function ProductsList({
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoCantidadCaja"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Cantidad por Caja
                     </label>
@@ -995,13 +934,13 @@ export default function ProductsList({
                       id="ProductoCantidadCaja"
                       value={formData.ProductoCantidadCaja || ""}
                       onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5"
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoIVA"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       IVA
                     </label>
@@ -1011,13 +950,13 @@ export default function ProductsList({
                       id="ProductoIVA"
                       value={formData.ProductoIVA || ""}
                       onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5"
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="ProductoStockMinimo"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Stock Mínimo
                     </label>
@@ -1027,13 +966,13 @@ export default function ProductsList({
                       id="ProductoStockMinimo"
                       value={formData.ProductoStockMinimo || ""}
                       onChange={handleInputChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                      className="bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5"
                     />
                   </div>
                   <div className="col-span-6 sm:col-span-3">
                     <label
                       htmlFor="LocalId"
-                      className="block mb-2 text-sm font-medium text-gray-900"
+                      className="block mb-2 text-sm font-medium text-text"
                     >
                       Local
                     </label>
@@ -1042,7 +981,7 @@ export default function ProductsList({
                       id="LocalId"
                       value={formData.LocalId}
                       onChange={handleInputChange}
-                      className="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5"
+                      className="shadow-sm bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5"
                       required
                     >
                       <option value="">Seleccione un local</option>
@@ -1055,14 +994,14 @@ export default function ProductsList({
                   </div>
                   {/* Imagen: solo mostrar base64 si existe */}
                   <div className="col-span-6">
-                    <label className="block mb-2 text-sm font-medium text-gray-900">
+                    <label className="block mb-2 text-sm font-medium text-text">
                       Imagen del producto
                     </label>
                     <div className="flex items-center gap-4 mb-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-blue-600 hover:text-blue-800 border border-blue-300 bg-white rounded px-3 py-1 text-sm font-medium cursor-pointer"
+                        className="text-brand-700 hover:text-blue-800 border border-blue-300 bg-white rounded px-3 py-1 text-sm font-medium cursor-pointer"
                       >
                         Seleccionar imagen
                       </button>
@@ -1083,7 +1022,7 @@ export default function ProductsList({
                           <button
                             type="button"
                             onClick={handleRemoveImage}
-                            className="text-red-600 hover:text-red-800 border border-red-300 bg-white rounded px-3 py-1 text-sm"
+                            className="text-danger-700 hover:text-red-800 border border-red-300 bg-white rounded px-3 py-1 text-sm"
                           >
                             Eliminar imagen
                           </button>
@@ -1092,23 +1031,8 @@ export default function ProductsList({
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center p-6 space-x-2 border-t border-gray-200 rounded-b">
-                <ActionButton
-                  label={currentProduct ? "Actualizar" : "Crear"}
-                  type="submit"
-                />
-                <ActionButton
-                  label="Cancelar"
-                  className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10"
-                  onClick={onCloseModal}
-                />
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </ModalDialog>
     </>
   );
 }

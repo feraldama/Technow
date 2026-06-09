@@ -170,7 +170,7 @@ const VentasList = ({
       const pagosTable = `
         <table class="w-full mt-4">
           <thead>
-            <tr class="bg-gray-100">
+            <tr class="bg-surface-muted">
               <th class="text-left py-2 px-4">ID Pago</th>
               <th class="text-left py-2 px-4">Fecha</th>
               <th class="text-right py-2 px-4">Monto</th>
@@ -180,7 +180,7 @@ const VentasList = ({
             ${pagos
               .map(
                 (pago: VentaCreditoPago) => `
-              <tr class="border-b hover:bg-gray-50">
+              <tr class="border-b hover:bg-surface-muted">
                 <td class="py-2 px-4">${pago.VentaCreditoPagoId}</td>
                 <td class="py-2 px-4">${new Date(
                   pago.VentaCreditoPagoFecha
@@ -324,9 +324,9 @@ const VentasList = ({
       case "P":
         return "bg-yellow-500"; // Pendiente
       case "C":
-        return "bg-green-500"; // Completado
+        return "bg-success-700"; // Completado
       case "A":
-        return "bg-red-500"; // Anulado
+        return "bg-danger-700"; // Anulado
       default:
         return "bg-gray-500";
     }
@@ -362,12 +362,12 @@ const VentasList = ({
             <button
               type="button"
               onClick={onToggleFilters}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text bg-white border border-border rounded-md hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-2 focus:ring-brand-600/30 cursor-pointer"
             >
               <FunnelIcon className="w-4 h-4" />
               Filtros
               {activeFilterCount > 0 && (
-                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-blue-600 rounded-full">
+                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-brand-700 rounded-full">
                   {activeFilterCount}
                 </span>
               )}
@@ -383,10 +383,10 @@ const VentasList = ({
         </div>
       </div>
       {onFiltersChange && showFilters && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+        <div className="bg-surface-muted border border-border rounded-lg p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Tipo
               </label>
               <select
@@ -397,7 +397,7 @@ const VentasList = ({
                     (e.target.value as VentaFilters["tipo"]) || ""
                   )
                 }
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               >
                 <option value="">Todos</option>
                 <option value="CO">Contado</option>
@@ -407,7 +407,7 @@ const VentasList = ({
               </select>
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Almacén
               </label>
               <select
@@ -415,7 +415,7 @@ const VentasList = ({
                 onChange={(e) =>
                   updateFilter("almacenId", e.target.value || "")
                 }
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               >
                 <option value="">Todos</option>
                 {almacenes.map((a) => (
@@ -426,7 +426,7 @@ const VentasList = ({
               </select>
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Desde
               </label>
               <input
@@ -451,11 +451,11 @@ const VentasList = ({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Hasta
               </label>
               <input
@@ -480,11 +480,11 @@ const VentasList = ({
                     (e.target as HTMLInputElement).blur();
                   }
                 }}
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               />
             </div>
             <div>
-              <label className="block mb-1 text-xs font-medium text-gray-700">
+              <label className="block mb-1 text-xs font-medium text-text">
                 Estado
               </label>
               <select
@@ -495,7 +495,7 @@ const VentasList = ({
                     (e.target.value as VentaFilters["estado"]) || ""
                   )
                 }
-                className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2"
+                className="w-full bg-white border border-border text-text text-sm rounded-md focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 p-2"
               >
                 <option value="">Todos</option>
                 <option value="P">Pendiente</option>
@@ -508,7 +508,7 @@ const VentasList = ({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-text-muted hover:text-text cursor-pointer"
               >
                 <XMarkIcon className="w-4 h-4" />
                 Limpiar filtros
@@ -518,7 +518,7 @@ const VentasList = ({
         </div>
       )}
       <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-text-muted">
           Mostrando {formatMiles(ventasWithAlmacen.length)} de{" "}
           {formatMiles(pagination?.totalItems || ventasWithAlmacen.length)}{" "}
           ventas

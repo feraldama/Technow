@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCajas } from "../../services/cajas.service";
 import ActionButton from "../../components/common/Button/ActionButton";
+import MoneyInput from "../../components/common/Input/MoneyInput";
 import { LoadingState, PermissionDenied } from "../../components/common/ui";
 import { usePermiso } from "../../hooks/usePermiso";
 import {
@@ -383,11 +384,11 @@ export default function AperturaCierreCajaPage() {
     <div className="container mx-auto px-4 max-w-xl">
       <h1 className="text-2xl font-medium mb-6">Apertura/Cierre de Caja</h1>
       {user && (
-        <div className="mb-4 p-3 bg-gray-100 rounded text-gray-700">
+        <div className="mb-4 p-3 bg-surface-muted rounded text-text">
           <span className="font-semibold">Usuario:</span> {user.nombre} (
           {user.id})
           {tipoDisabled && cajaId && (
-            <span className="ml-2 text-sm text-gray-600">
+            <span className="ml-2 text-sm text-text-muted">
               | Caja:{" "}
               {cajas.find((c) => c.CajaId == cajaId)?.CajaDescripcion || ""}
             </span>
@@ -400,12 +401,12 @@ export default function AperturaCierreCajaPage() {
       >
         <div className="grid grid-cols-1 gap-6">
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-900">
+            <label className="block mb-2 text-sm font-medium text-text">
               Tipo de operación
             </label>
             <select
-              className={`bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${
-                tipoDisabled ? "bg-gray-200 text-gray-500" : ""
+              className={`bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5 ${
+                tipoDisabled ? "bg-border text-text-muted" : ""
               }`}
               value={tipo}
               onChange={(e) => setTipo(e.target.value as "0" | "1")}
@@ -417,12 +418,12 @@ export default function AperturaCierreCajaPage() {
             </select>
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-900">
+            <label className="block mb-2 text-sm font-medium text-text">
               Caja
             </label>
             <select
-              className={`bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${
-                cajaDisabled ? "bg-gray-200 text-gray-500" : ""
+              className={`bg-surface-muted border border-border text-text text-sm rounded-lg focus:ring-2 focus:ring-brand-600/30 focus:border-brand-700 block w-full p-2.5 ${
+                cajaDisabled ? "bg-border text-text-muted" : ""
               }`}
               value={cajaId}
               onChange={(e) => setCajaId(e.target.value)}
@@ -438,21 +439,12 @@ export default function AperturaCierreCajaPage() {
             </select>
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-900">
+            <label className="block mb-2 text-sm font-medium text-text">
               {tipo === "1" ? "Monto de cierre" : "Monto de apertura"}
             </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-              value={monto ? formatMiles(monto) : ""}
-              onChange={(e) => {
-                const raw = e.target.value
-                  .replace(/\./g, "")
-                  .replace(/\s/g, "");
-                const num = Number(raw);
-                if (!isNaN(num)) setMonto(num);
-              }}
+            <MoneyInput
+              value={monto}
+              onValueChange={(v) => setMonto(v)}
               min={0}
               required
             />
@@ -466,7 +458,7 @@ export default function AperturaCierreCajaPage() {
           />
         </div>
         {success && (
-          <div className="text-green-600 text-center font-medium mt-2">
+          <div className="text-success-700 text-center font-medium mt-2">
             {success}
           </div>
         )}

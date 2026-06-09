@@ -7,6 +7,8 @@ import { getEstadoAperturaPorUsuario } from "../../services/registrodiariocaja.s
 import { getCajaById } from "../../services/cajas.service";
 import Swal from "sweetalert2";
 import { formatMiles } from "../../utils/utils";
+import ModalDialog from "./ModalDialog";
+import Button from "./Button/Button";
 
 interface TipoGasto {
   TipoGastoId: number;
@@ -104,25 +106,27 @@ const PagoModal: React.FC<PagoModalProps> = ({
     }
   };
 
-  if (!show) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black opacity-50" />
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
-          onClick={handleClose}
-        >
-          &times;
-        </button>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-          Nuevo Pago
-        </h2>
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-4 mb-4">
+    <ModalDialog
+      open={show}
+      onClose={handleClose}
+      title="Nuevo Pago"
+      size="md"
+      footer={
+        <>
+          <Button variant="secondary" type="button" onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button variant="primary" type="submit" form="pago-form">
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <form id="pago-form" onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-text-muted mb-1">
                 Fecha
               </label>
               <input
@@ -130,18 +134,18 @@ const PagoModal: React.FC<PagoModalProps> = ({
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                className="w-full border border-border rounded px-2 py-1 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-text-muted mb-1">
                 Tipo de Gasto
               </label>
               <select
                 value={tipoGastoId}
                 onChange={(e) => setTipoGastoId(Number(e.target.value))}
                 required
-                className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                className="w-full border border-border rounded px-2 py-1 text-sm"
               >
                 <option value="">Seleccione...</option>
                 {tiposGasto.map((tg) => (
@@ -152,14 +156,14 @@ const PagoModal: React.FC<PagoModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-text-muted mb-1">
                 Grupo de Gasto
               </label>
               <select
                 value={tipoGastoGrupoId}
                 onChange={(e) => setTipoGastoGrupoId(Number(e.target.value))}
                 required
-                className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                className="w-full border border-border rounded px-2 py-1 text-sm"
               >
                 <option value="">Seleccione...</option>
                 {gruposFiltrados.map((gg) => (
@@ -170,7 +174,7 @@ const PagoModal: React.FC<PagoModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-text-muted mb-1">
                 Descripción
               </label>
               <input
@@ -178,11 +182,11 @@ const PagoModal: React.FC<PagoModalProps> = ({
                 value={detalle}
                 onChange={(e) => setDetalle(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                className="w-full border border-border rounded px-2 py-1 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-text-muted mb-1">
                 Monto
               </label>
               <input
@@ -197,30 +201,14 @@ const PagoModal: React.FC<PagoModalProps> = ({
                   setMonto(isNaN(num) ? "" : num);
                 }}
                 required
-                className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                className="w-full border border-border rounded px-2 py-1 text-sm"
                 inputMode="numeric"
                 pattern="[0-9.]*"
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
-              Guardar
-            </button>
-            <button
-              type="button"
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition"
-              onClick={handleClose}
-            >
-              Cancelar
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </ModalDialog>
   );
 };
 

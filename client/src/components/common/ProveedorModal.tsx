@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 
 import type { Proveedor } from "../../types";
+import ModalDialog from "./ModalDialog";
+import Button from "./Button/Button";
 
 interface CreateProveedorData {
   ProveedorRUC: string;
@@ -68,31 +70,25 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
     }
   }, [show, showCreateForm]);
 
-  if (!show) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black opacity-50" />
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6 relative">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl cursor-pointer"
-          onClick={onClose}
-        >
-          &times;
-        </button>
-        <div className="flex justify-between items-center mb-4 pr-8">
-          <h2 className="text-2xl font-semibold text-gray-800">
-            Seleccionar Proveedor
-          </h2>
-          <button
+    <ModalDialog
+      open={show}
+      onClose={onClose}
+      title="Seleccionar Proveedor"
+      size="4xl"
+      headerActions={
+        !showCreateForm ? (
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={PlusIcon}
             onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
-            <PlusIcon className="w-4 h-4" />
             Crear Nuevo Proveedor
-          </button>
-        </div>
-
+          </Button>
+        ) : undefined
+      }
+    >
         {!showCreateForm ? (
           <>
             <div className="mb-4">
@@ -102,25 +98,25 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
                 placeholder="Buscar proveedor..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-border rounded-lg"
               />
             </div>
 
-            <div className="max-h-96 overflow-y-auto">
+            <div className="space-y-2">
               {filteredProveedores.map((proveedor) => (
                 <div
                   key={proveedor.ProveedorId}
-                  className="p-3 border border-gray-200 rounded-lg mb-2 hover:bg-gray-50 cursor-pointer"
+                  className="p-3 border border-border rounded-lg mb-2 hover:bg-surface-muted cursor-pointer"
                   onClick={() => onSelect(proveedor)}
                 >
                   <div className="font-semibold">
                     {proveedor.ProveedorNombre}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-text-muted">
                     RUC: {proveedor.ProveedorRUC || "Sin RUC"}
                   </div>
                   {proveedor.ProveedorTelefono && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-text-muted">
                       Tel: {proveedor.ProveedorTelefono}
                     </div>
                   )}
@@ -133,7 +129,7 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
             <h3 className="text-lg font-semibold">Crear Nuevo Proveedor</h3>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text mb-1">
                 Nombre *
               </label>
               <input
@@ -145,13 +141,13 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
                     ProveedorNombre: e.target.value,
                   })
                 }
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-border rounded-lg"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text mb-1">
                 RUC
               </label>
               <input
@@ -163,12 +159,12 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
                     ProveedorRUC: e.target.value,
                   })
                 }
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-border rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text mb-1">
                 Dirección
               </label>
               <input
@@ -180,12 +176,12 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
                     ProveedorDireccion: e.target.value,
                   })
                 }
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-border rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-text mb-1">
                 Teléfono
               </label>
               <input
@@ -197,29 +193,25 @@ const ProveedorModal: React.FC<ProveedorModalProps> = ({
                     ProveedorTelefono: e.target.value,
                   })
                 }
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-border rounded-lg"
               />
             </div>
 
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-              >
+              <Button variant="success" type="submit">
                 Crear
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
               >
                 Cancelar
-              </button>
+              </Button>
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </ModalDialog>
   );
 };
 
