@@ -38,9 +38,45 @@ function isWriteSql(sql) {
   return /^\s*(INSERT|UPDATE|DELETE)\b/i.test(sql);
 }
 
+// MySQL DATE_FORMAT specifiers -> PostgreSQL to_char template patterns.
+const MYSQL_DATE_TOKENS = {
+  "%Y": "YYYY",
+  "%y": "YY",
+  "%m": "MM",
+  "%c": "FMMM",
+  "%d": "DD",
+  "%e": "FMDD",
+  "%H": "HH24",
+  "%h": "HH12",
+  "%I": "HH12",
+  "%i": "MI",
+  "%s": "SS",
+  "%S": "SS",
+  "%M": "Month",
+  "%b": "Mon",
+  "%p": "AM",
+};
+
+function mysqlFormatToPg(fmt) {
+  return fmt.replace(/%[A-Za-z%]/g, (t) =>
+    t === "%%" ? "%" : MYSQL_DATE_TOKENS[t] || t,
+  );
+}
+
+// Rewrite MySQL DATE_FORMAT(expr, 'fmt') as PG to_char(expr, 'fmt'), converting
+// the format string's specifiers. Runs on the raw SQL before placeholder/LIKE
+// rewriting; the expr arg in our usages is a simple column so `[^,]+?` is safe.
+function rewriteDateFormat(sql) {
+  return sql.replace(
+    /DATE_FORMAT\s*\(\s*([^,]+?)\s*,\s*'([^']*)'\s*\)/gi,
+    (_m, expr, fmt) => `to_char(${expr}, '${mysqlFormatToPg(fmt)}')`,
+  );
+}
+
 // Translate MySQL-flavoured SQL to PG. Tokenises around single-quoted string
 // literals so we never rewrite content inside them.
 function translate(sql) {
+  sql = rewriteDateFormat(sql);
   let result = "";
   let i = 0;
   let placeholderIdx = 0;
