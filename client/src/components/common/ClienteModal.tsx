@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import ClienteFormModal from "./ClienteFormModal";
 import type { Cliente } from "./ClienteFormModal";
@@ -33,6 +33,14 @@ const ClienteModal: React.FC<ClienteModalProps> = ({
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const rucInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (show) {
+      const t = setTimeout(() => rucInputRef.current?.focus(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [show]);
 
   const clientesFiltrados = useMemo(() => {
     return clientes.filter(
@@ -84,6 +92,7 @@ const ClienteModal: React.FC<ClienteModalProps> = ({
         <div className="bg-surface-sunken rounded-md p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TextInput
+              ref={rucInputRef}
               label="RUC"
               size="sm"
               placeholder="Buscar"
