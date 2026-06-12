@@ -572,78 +572,111 @@ const Venta = {
             });
           }
 
-          // IDs de ventas a crédito (único set que va a tener ventacredito).
-          const creditoVentaIds = ventasResults
-            .filter((v) => v.VentaTipo === "CR")
-            .map((v) => v.VentaId);
+          // Detalle de productos de todas las ventas del set (una sola query).
+          const ventaIds = ventasResults.map((v) => v.VentaId);
 
-          const finalize = (creditosByVentaId, pagosByCreditoId) => {
-            const ventasConDetalle = ventasResults.map((venta) => {
-              const base = { ...venta, SaldoPendiente: 0, Pagos: [] };
-              if (venta.VentaTipo !== "CR") return base;
-
-              const total = Number(venta.Total) || 0;
-              const entrega = Number(venta.VentaEntrega) || 0;
-              base.SaldoPendiente = total - entrega;
-
-              const credito = creditosByVentaId.get(venta.VentaId);
-              if (credito) {
-                base.Pagos = pagosByCreditoId.get(credito.VentaCreditoId) || [];
-              }
-              return base;
-            });
-
-            resolve({
-              cliente: {
-                ClienteId: cliente.ClienteId,
-                ClienteNombre: cliente.ClienteNombre,
-                ClienteApellido: cliente.ClienteApellido,
-                ClienteRUC: cliente.ClienteRUC,
-              },
-              fechaDesde,
-              fechaHasta,
-              ventas: ventasConDetalle,
-            });
-          };
-
-          // Sin ventas a crédito: no hacen falta las otras 2 queries.
-          if (creditoVentaIds.length === 0) {
-            return finalize(new Map(), new Map());
-          }
-
-          // Query #2: todos los ventacredito del set en una sola tirada.
           db.query(
-            `SELECT * FROM ventacredito WHERE VentaId IN (?)`,
-            [creditoVentaIds],
-            (err, creditosResults) => {
+            `SELECT
+               vp.*,
+               p.ProductoNombre,
+               p.ProductoCodigo
+             FROM ventaproducto vp
+             LEFT JOIN producto p ON vp.ProductoId = p.ProductoId
+             WHERE vp.VentaId = ANY(?)
+             ORDER BY vp.VentaId ASC, vp.VentaProductoId ASC`,
+            [ventaIds],
+            (err, productosResults) => {
               if (err) return reject(err);
 
-              const creditosByVentaId = new Map(
-                creditosResults.map((c) => [c.VentaId, c])
-              );
-              const creditoIds = creditosResults.map((c) => c.VentaCreditoId);
-
-              if (creditoIds.length === 0) {
-                return finalize(creditosByVentaId, new Map());
+              const productosByVentaId = new Map();
+              for (const prod of productosResults) {
+                const arr = productosByVentaId.get(prod.VentaId);
+                if (arr) arr.push(prod);
+                else productosByVentaId.set(prod.VentaId, [prod]);
               }
 
-              // Query #3: todos los pagos del set, ordenados y agrupados en memoria.
+              // IDs de ventas a crédito (único set que va a tener ventacredito).
+              const creditoVentaIds = ventasResults
+                .filter((v) => v.VentaTipo === "CR")
+                .map((v) => v.VentaId);
+
+              const finalize = (creditosByVentaId, pagosByCreditoId) => {
+                const ventasConDetalle = ventasResults.map((venta) => {
+                  const base = {
+                    ...venta,
+                    SaldoPendiente: 0,
+                    Pagos: [],
+                    Productos: productosByVentaId.get(venta.VentaId) || [],
+                  };
+                  if (venta.VentaTipo !== "CR") return base;
+
+                  const total = Number(venta.Total) || 0;
+                  const entrega = Number(venta.VentaEntrega) || 0;
+                  base.SaldoPendiente = total - entrega;
+
+                  const credito = creditosByVentaId.get(venta.VentaId);
+                  if (credito) {
+                    base.Pagos =
+                      pagosByCreditoId.get(credito.VentaCreditoId) || [];
+                  }
+                  return base;
+                });
+
+                resolve({
+                  cliente: {
+                    ClienteId: cliente.ClienteId,
+                    ClienteNombre: cliente.ClienteNombre,
+                    ClienteApellido: cliente.ClienteApellido,
+                    ClienteRUC: cliente.ClienteRUC,
+                  },
+                  fechaDesde,
+                  fechaHasta,
+                  ventas: ventasConDetalle,
+                });
+              };
+
+              // Sin ventas a crédito: no hacen falta las otras 2 queries.
+              if (creditoVentaIds.length === 0) {
+                return finalize(new Map(), new Map());
+              }
+
+              // Query: todos los ventacredito del set en una sola tirada.
               db.query(
-                `SELECT * FROM ventacreditopago
-                 WHERE VentaCreditoId IN (?)
-                 ORDER BY VentaCreditoPagoFecha ASC, VentaCreditoPagoId ASC`,
-                [creditoIds],
-                (err, pagosResults) => {
+                `SELECT * FROM ventacredito WHERE VentaId = ANY(?)`,
+                [creditoVentaIds],
+                (err, creditosResults) => {
                   if (err) return reject(err);
 
-                  const pagosByCreditoId = new Map();
-                  for (const pago of pagosResults) {
-                    const arr = pagosByCreditoId.get(pago.VentaCreditoId);
-                    if (arr) arr.push(pago);
-                    else pagosByCreditoId.set(pago.VentaCreditoId, [pago]);
+                  const creditosByVentaId = new Map(
+                    creditosResults.map((c) => [c.VentaId, c])
+                  );
+                  const creditoIds = creditosResults.map(
+                    (c) => c.VentaCreditoId
+                  );
+
+                  if (creditoIds.length === 0) {
+                    return finalize(creditosByVentaId, new Map());
                   }
 
-                  finalize(creditosByVentaId, pagosByCreditoId);
+                  // Query: todos los pagos del set, ordenados y agrupados en memoria.
+                  db.query(
+                    `SELECT * FROM ventacreditopago
+                     WHERE VentaCreditoId = ANY(?)
+                     ORDER BY VentaCreditoPagoFecha ASC, VentaCreditoPagoId ASC`,
+                    [creditoIds],
+                    (err, pagosResults) => {
+                      if (err) return reject(err);
+
+                      const pagosByCreditoId = new Map();
+                      for (const pago of pagosResults) {
+                        const arr = pagosByCreditoId.get(pago.VentaCreditoId);
+                        if (arr) arr.push(pago);
+                        else pagosByCreditoId.set(pago.VentaCreditoId, [pago]);
+                      }
+
+                      finalize(creditosByVentaId, pagosByCreditoId);
+                    }
+                  );
                 }
               );
             }

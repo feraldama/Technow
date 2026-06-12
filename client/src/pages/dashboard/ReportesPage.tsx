@@ -37,6 +37,17 @@ interface Pago {
   VentaCreditoPagoMonto: number;
 }
 
+interface VentaProductoDetalle {
+  VentaProductoId: number;
+  ProductoId: number;
+  ProductoNombre?: string;
+  ProductoCodigo?: string;
+  VentaProductoCantidad: number;
+  VentaProductoPrecio: number;
+  VentaProductoPrecioTotal: number;
+  VentaProductoUnitario: string;
+}
+
 interface Venta {
   VentaId: number;
   VentaFecha: string;
@@ -45,6 +56,7 @@ interface Venta {
   VentaEntrega: number;
   SaldoPendiente: number;
   Pagos: Pago[];
+  Productos?: VentaProductoDetalle[];
   AlmacenNombre: string;
   UsuarioNombre: string;
   ClienteNombre?: string;
@@ -439,7 +451,7 @@ const ReportesPage: React.FC = () => {
       const esTodos = clienteSeleccionado.toUpperCase() === "TODOS";
 
       const { jsPDF, autoTable } = await loadPdf();
-      const doc = new jsPDF({ orientation: esTodos ? "landscape" : "portrait" });
+      const doc = new jsPDF({ orientation: "landscape" });
       let y = 20;
 
       // Título
@@ -477,6 +489,11 @@ const ReportesPage: React.FC = () => {
       let totalCredito = 0;
 
       const ventasRows: string[][] = [];
+      // Índices de filas que son detalle (productos / pagos) para estilarlas distinto.
+      const detalleRowIndices = new Set<number>();
+
+      const unidadLabel = (u: string) =>
+        u === "C" ? "Caja" : u === "U" ? "Unid." : u || "";
 
       reporte.ventas.forEach((venta) => {
         const tipoVenta =
@@ -527,10 +544,32 @@ const ReportesPage: React.FC = () => {
           ]);
         }
 
+        // Detalle de productos vendidos en esta venta (estilo factura).
+        if (venta.Productos && venta.Productos.length > 0) {
+          venta.Productos.forEach((prod) => {
+            const nombre =
+              [prod.ProductoCodigo, prod.ProductoNombre]
+                .filter(Boolean)
+                .join(" - ") || `Producto ${prod.ProductoId}`;
+            const cant = `${formatMiles(prod.VentaProductoCantidad)} ${unidadLabel(
+              prod.VentaProductoUnitario,
+            )}`.trim();
+            const precioUnit = formatMiles(prod.VentaProductoPrecio);
+            const totalLinea = formatMiles(prod.VentaProductoPrecioTotal);
+            detalleRowIndices.add(ventasRows.length);
+            if (esTodos) {
+              ventasRows.push(["", "", `  • ${nombre}`, cant, precioUnit, totalLinea, ""]);
+            } else {
+              ventasRows.push(["", `  • ${nombre}`, cant, precioUnit, totalLinea, ""]);
+            }
+          });
+        }
+
         // Si es crédito y tiene pagos, agregar información de pagos
         if (venta.VentaTipo === "CR" && venta.Pagos && venta.Pagos.length > 0) {
           venta.Pagos.forEach((pago) => {
             const fechaPago = formatearFechaHora(pago.VentaCreditoPagoFecha);
+            detalleRowIndices.add(ventasRows.length);
             if (esTodos) {
               ventasRows.push(["", "", fechaPago, `  Pago ${pago.VentaCreditoPagoId}`, formatMiles(pago.VentaCreditoPagoMonto), "", ""]);
             } else {
@@ -544,23 +583,26 @@ const ReportesPage: React.FC = () => {
         ? [["ID", "CLIENTE", "FECHA", "TIPO", "TOTAL", "SALDO PEND.", "USUARIO"]]
         : [["ID", "FECHA", "TIPO", "TOTAL", "SALDO PEND.", "USUARIO"]];
 
+      // Anchos pensados para A4 horizontal (~269mm útiles). La columna FECHA
+      // también aloja el nombre del producto en las filas de detalle, por eso
+      // es la más ancha.
       const columnStyles: Record<number, { cellWidth: number }> = esTodos
         ? {
-            0: { cellWidth: 18 },
-            1: { cellWidth: 45 },
-            2: { cellWidth: 28 },
+            0: { cellWidth: 16 },
+            1: { cellWidth: 42 },
+            2: { cellWidth: 68 },
             3: { cellWidth: 28 },
-            4: { cellWidth: 32 },
-            5: { cellWidth: 35 },
-            6: { cellWidth: 25 },
+            4: { cellWidth: 38 },
+            5: { cellWidth: 42 },
+            6: { cellWidth: 30 },
           }
         : {
-            0: { cellWidth: 18 },
-            1: { cellWidth: 28 },
-            2: { cellWidth: 28 },
-            3: { cellWidth: 32 },
-            4: { cellWidth: 35 },
-            5: { cellWidth: 25 },
+            0: { cellWidth: 20 },
+            1: { cellWidth: 90 },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 40 },
+            4: { cellWidth: 45 },
+            5: { cellWidth: 30 },
           };
 
       autoTable(doc, {
@@ -572,6 +614,17 @@ const ReportesPage: React.FC = () => {
         styles: { fontSize: esTodos ? 9 : 10 },
         margin: { left: 14, right: 14 },
         columnStyles,
+        didParseCell: (data) => {
+          if (
+            data.section === "body" &&
+            detalleRowIndices.has(data.row.index)
+          ) {
+            data.cell.styles.fontStyle = "italic";
+            data.cell.styles.textColor = [90, 90, 90];
+            data.cell.styles.fillColor = [245, 245, 245];
+            data.cell.styles.fontSize = esTodos ? 8 : 9;
+          }
+        },
       });
 
       y =
