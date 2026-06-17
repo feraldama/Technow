@@ -17,19 +17,6 @@ export const getAllTipoGastoGrupo = async () => {
   }
 };
 
-export const getTipoGastoGrupoById = async (
-  tipoGastoId: string | number,
-  grupoId: string | number
-) => {
-  try {
-    const response = await api.get(`/tipogastogrupo/${tipoGastoId}/${grupoId}`);
-    return response.data;
-  } catch (error) {
-    const axiosError = error as AxiosError<{ message?: string }>;
-    throw axiosError.response?.data || { message: "Error al obtener grupo" };
-  }
-};
-
 export const getTipoGastoGrupoByTipoGastoId = async (
   tipoGastoId: string | number
 ) => {
