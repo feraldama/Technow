@@ -373,7 +373,7 @@ const Venta = {
           OR CAST(v.VentaCantidadProductos AS CHAR) = ?
           OR LOWER(COALESCE(u.UsuarioNombre, '')) LIKE LOWER(?)
           OR CAST(v.Total AS CHAR) = ?
-          OR LOWER(COALESCE(v.VentaEntrega, '')) LIKE LOWER(?)
+          OR CAST(v.VentaEntrega AS CHAR) = ?
         )${filtersAndClause}
         ORDER BY v.${sortField} ${order}
         LIMIT ? OFFSET ?
@@ -395,7 +395,7 @@ const Venta = {
         exactValue, // VentaCantidadProductos
         likeValue, // UsuarioNombre
         exactValue, // Total
-        likeValue, // VentaEntrega
+        exactValue, // VentaEntrega
       ];
 
       const values = [...searchParams, ...filterParams, limit, offset];
@@ -436,7 +436,7 @@ const Venta = {
             OR CAST(v.VentaCantidadProductos AS CHAR) = ?
             OR LOWER(COALESCE(u.UsuarioNombre, '')) LIKE LOWER(?)
             OR CAST(v.Total AS CHAR) = ?
-            OR LOWER(COALESCE(v.VentaEntrega, '')) LIKE LOWER(?)
+            OR CAST(v.VentaEntrega AS CHAR) = ?
           )${filtersAndClause}
         `;
 
