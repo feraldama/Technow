@@ -105,6 +105,11 @@ export default function Compras() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addFirstOnNextResultsRef = useRef(false);
+  // Guard síncrono contra doble envío: el ref se setea en el acto (antes de
+  // cualquier await), así un segundo clic mientras la petición está en vuelo
+  // se descarta sin esperar al re-render del estado.
+  const enviandoCompraRef = useRef(false);
+  const [enviandoCompra, setEnviandoCompra] = useState(false);
 
   useEffect(() => {
     if (selectedProductId !== null && cantidadRefs.current[selectedProductId]) {
@@ -371,6 +376,11 @@ export default function Compras() {
       return;
     }
 
+    // Bloqueo de doble envío: si ya hay una compra en curso, ignoro el clic.
+    if (enviandoCompraRef.current) return;
+    enviandoCompraRef.current = true;
+    setEnviandoCompra(true);
+
     try {
       await confirmarCompra({
         CompraFecha: compraFechaConHora,
@@ -441,6 +451,10 @@ export default function Compras() {
         title: "Error",
         text: msg,
       });
+    } finally {
+      // Libero el guard pase lo que pase para permitir la siguiente compra.
+      enviandoCompraRef.current = false;
+      setEnviandoCompra(false);
     }
 
     // Limpiar estados
@@ -805,10 +819,11 @@ export default function Compras() {
           {/* Botón Comprar */}
           <div className="mb-3">
             <button
-              className="w-full bg-success-700 border border-green-500 rounded-lg text-white font-medium text-lg h-[60px] flex items-center justify-center hover:bg-success-800 transition"
+              className="w-full bg-success-700 border border-green-500 rounded-lg text-white font-medium text-lg h-[60px] flex items-center justify-center hover:bg-success-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={sendRequest}
+              disabled={enviandoCompra}
             >
-              Comprar
+              {enviandoCompra ? "Procesando..." : "Comprar"}
             </button>
           </div>
 
